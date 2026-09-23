@@ -1,0 +1,6 @@
+{
+  "name": "TBK Task Manager",
+  "description": "Aplikasi manajemen tugas kolaboratif Teman Bawa Kawan (TBK) khusus sesama pegiat media sosial untuk saling support demi monetisasi, dilengkapi sinkronisasi cloud real-time, gamifikasi XP kreator & streak, enkripsi end-to-end, mode offline, integrasi kalender editorial, dan analitik performa.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
