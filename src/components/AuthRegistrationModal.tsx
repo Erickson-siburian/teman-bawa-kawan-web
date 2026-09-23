@@ -36,29 +36,17 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
 
-  // Form State matching the exact screenshots provided by user
-  const [nama, setNama] = useState('Adrian & Andrew');
+  // Form State initialized empty so public users have a clean registration form
+  const [nama, setNama] = useState('');
   const [jenisKelamin, setJenisKelamin] = useState<'Laki-Laki' | 'Perempuan'>('Laki-Laki');
-  const [nomorHp, setNomorHp] = useState('081298765432');
-  const [email, setEmail] = useState('haihaihai9191@gmail.com');
-  const [password, setPassword] = useState('password123');
-  const [ulangiPassword, setUlangiPassword] = useState('password123');
-  const [pekerjaan, setPekerjaan] = useState('Wiraswasta / Pedagang');
+  const [nomorHp, setNomorHp] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [ulangiPassword, setUlangiPassword] = useState('');
+  const [pekerjaan, setPekerjaan] = useState('');
 
-  // Social accounts
-  const [socials, setSocials] = useState<MemberSocialAccounts>({
-    instagram: '@adrian_andrew.id',
-    youtube: 'AdrianAndrewOfficial',
-    googleMap: 'Adrian Local Guide',
-    facebook: 'Adrian Andrew ID',
-    googlePlaystore: 'adrian.reviewer',
-    threads: '@adrian_andrew.id',
-    tiktok: '@adrianandrew_tiktok',
-    linkedIn: 'adrian-andrew',
-    spotify: 'Adrian Andrew Podcast',
-    detik: 'adrian_komentar',
-    xTwitter: '@adrian_andrew',
-  });
+  // Social accounts initialized empty
+  const [socials, setSocials] = useState<MemberSocialAccounts>({});
 
   // Login-specific state
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -260,7 +248,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                         required
                         value={nama}
                         onChange={(e) => setNama(e.target.value)}
-                        placeholder="Adrian & Andrew"
+                        placeholder="Masukkan nama lengkap Anda..."
                         className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
                       />
                     </div>
@@ -300,7 +288,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                         required
                         value={nomorHp}
                         onChange={(e) => setNomorHp(e.target.value)}
-                        placeholder="081298765432"
+                        placeholder="Contoh: 081234567890"
                         className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
                       />
                     </div>
@@ -320,7 +308,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="haihaihai9191@gmail.com"
+                        placeholder="nama@email.com"
                         className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
                       />
                     </div>
@@ -396,7 +384,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                         required
                         value={pekerjaan}
                         onChange={(e) => setPekerjaan(e.target.value)}
-                        placeholder="Wiraswasta / Pedagang"
+                        placeholder="Contoh: Kreator Konten, Mahasiswa, Wiraswasta"
                         className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
                       />
                     </div>

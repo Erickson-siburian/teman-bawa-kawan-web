@@ -60,15 +60,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const unreadNotifs = notifications.filter((n) => !n.read);
 
-  const navItems = [
+  const navItems: Array<{
+    id: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor';
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    desc: string;
+    isAdminOnly?: boolean;
+    badge?: string;
+  }> = [
     {
-      id: 'landing' as const,
+      id: 'landing',
       label: 'Halaman Depan',
       icon: Home,
       desc: 'Beranda & Showcase Sinergi',
     },
     {
-      id: 'board' as const,
+      id: 'board',
       label: 'Konten & Tugas',
       icon: CheckCircle2,
       desc: 'Papan Kanban Kolaborasi',
@@ -85,19 +92,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ]
       : []),
     {
-      id: 'calendar' as const,
+      id: 'calendar',
       label: 'Kalender Editorial',
       icon: Calendar,
       desc: 'Jadwal & Prime Time',
     },
     {
-      id: 'gamification' as const,
+      id: 'gamification',
       label: 'Member Aktif',
       icon: UserCheck,
       desc: 'Direktori & Rekap Anggota',
     },
     {
-      id: 'analytics' as const,
+      id: 'analytics',
       label: 'Dashboard Trend',
       icon: BarChart3,
       desc: 'Tren Sosmed & Interaksi',

@@ -148,33 +148,6 @@ export const initialTeamMembers: TeamMember[] = [
 
 export const initialTasks: Task[] = [
   {
-    id: 'task-100',
-    title: '📌 [Wajib] Subscribe & Follow Media Sosial Official Admin TBK',
-    description: 'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.',
-    isEncrypted: false,
-    status: 'todo',
-    priority: 'urgent',
-    isOfficialMandatory: true,
-    mediaLink: 'https://youtube.com/@AdrianAndrewOfficial',
-    platform: 'youtube',
-    creatorId: 'user-1',
-    creatorName: 'Adrian & Andrew (Admin)',
-    assigneeId: 'user-1',
-    assigneeName: 'Adrian & Andrew',
-    assigneeAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    dueDate: new Date(Date.now() + 86400000 * 7).toISOString(),
-    category: 'algorithm_growth',
-    tags: ['WajibAdmin', 'YouTube', 'FollowSosmed', 'SinergiTBK'],
-    subtasks: [
-      { id: 'sub-01', title: 'Buka channel YouTube Admin & klik tombol Subscribe', completed: false },
-      { id: 'sub-02', title: 'Tonton video terbaru & beri komentar sinergi #TemanBawaKawan', completed: false },
-      { id: 'sub-03', title: 'Follow Instagram @adrian_andrew.id', completed: false },
-    ],
-    comments: [],
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-  },
-  {
     id: 'task-101',
     title: 'Kontrak Kerja Sama & Jadwal Kolaborasi Konten 2026',
     description: 'Kesepakatan jadwal penayangan konten kolaborasi 3 video berseri. Berisi rincian rate card, terms komisi affiliate, dan tanggal tayang yang disepakati bersama.',

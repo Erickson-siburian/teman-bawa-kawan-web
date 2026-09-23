@@ -83,6 +83,8 @@ interface TeamMember {
   id: string;
   name: string;
   email: string;
+  password?: string;
+  userType?: 'admin' | 'user';
   role: string;
   avatar: string;
   gender?: 'Laki-Laki' | 'Perempuan';
@@ -133,6 +135,8 @@ let teamMembers: TeamMember[] = [
     id: 'user-1',
     name: 'Adrian & Andrew',
     email: 'haihaihai9191@gmail.com',
+    password: 'password123',
+    userType: 'admin',
     role: 'Wiraswasta / Pedagang & Ambassador TBK',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     gender: 'Laki-Laki',
@@ -754,6 +758,72 @@ async function startServer() {
   // GET Team Members & Gamification
   app.get('/api/team', (req: Request, res: Response) => {
     res.json({ success: true, teamMembers });
+  });
+
+  // POST Create/Register New Team Member (Instant Real-time Sync across all devices)
+  app.post('/api/team', (req: Request, res: Response) => {
+    const newMember: TeamMember = req.body;
+    if (!newMember || !newMember.id) {
+      return res.status(400).json({ success: false, message: 'Data member tidak valid' });
+    }
+
+    // Default to 'user' if not explicitly defined
+    if (!newMember.userType) {
+      newMember.userType = 'user';
+    }
+
+    const existingIndex = teamMembers.findIndex(
+      (m) => m.id === newMember.id || m.email.toLowerCase() === newMember.email.toLowerCase()
+    );
+
+    if (existingIndex !== -1) {
+      teamMembers[existingIndex] = {
+        ...teamMembers[existingIndex],
+        ...newMember,
+      };
+    } else {
+      teamMembers.unshift(newMember);
+
+      // Create notification for admin and community
+      const registerNotif: NotificationItem = {
+        id: `notif-${Date.now()}`,
+        title: '🎉 Member Baru Bergabung!',
+        message: `${newMember.name} (${newMember.occupation || 'Member Baru'}) berhasil mendaftar ke Komunitas TBK.`,
+        type: 'level_up',
+        read: false,
+        createdAt: new Date().toISOString(),
+      };
+      notifications.unshift(registerNotif);
+      broadcastEvent('notification_added', registerNotif);
+    }
+
+    // Broadcast updated team list to all connected clients (Admin PC & mobile devices)
+    broadcastEvent('team_updated', teamMembers);
+
+    res.status(201).json({
+      success: true,
+      member: newMember,
+      teamMembers,
+    });
+  });
+
+  // PUT Update Team Member (for Profile & Official Sosmed updates)
+  app.put('/api/team/:id', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const updates = req.body;
+    const memberIndex = teamMembers.findIndex((m) => m.id === id);
+
+    if (memberIndex === -1) {
+      return res.status(404).json({ success: false, message: 'Member tidak ditemukan' });
+    }
+
+    teamMembers[memberIndex] = {
+      ...teamMembers[memberIndex],
+      ...updates,
+    };
+
+    broadcastEvent('team_updated', teamMembers);
+    res.json({ success: true, member: teamMembers[memberIndex], teamMembers });
   });
 
   // GET Notifications

@@ -10,7 +10,7 @@ import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { AdminProgressMonitor } from './components/AdminProgressMonitor';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AuthRegistrationModal } from './components/AuthRegistrationModal';
-import { NotificationItem, ReferralRecord, Task, TaskStatus, TeamMember } from './types';
+import { NotificationItem, ReferralRecord, Task, TaskStatus, TeamMember, MemberSocialAccounts } from './types';
 import { syncManager } from './lib/syncManager';
 import { playTaskDoneChime, playLevelUpFanfare, playNotificationTone } from './lib/audio';
 import { initialTeamMembers, initialTasks, initialNotifications, initialReferrals } from './data/initialData';
@@ -515,6 +515,135 @@ export default function App() {
     }
   };
 
+  // Update Full Task
+  const handleUpdateTask = async (updatedTask: Task) => {
+    setTasks((prev) => {
+      const updated = prev.map((t) => (t.id === updatedTask.id ? updatedTask : t));
+      syncManager.setCachedTasks(updated);
+      return updated;
+    });
+    setSelectedTask((prev) => (prev?.id === updatedTask.id ? updatedTask : prev));
+
+    if (syncManager.isOnline()) {
+      try {
+        await fetch(`/api/tasks/${updatedTask.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedTask),
+        });
+      } catch {
+        syncManager.queueAction('update', updatedTask.id, updatedTask);
+        setOutboxCount(syncManager.getOutboxCount());
+      }
+    } else {
+      syncManager.queueAction('update', updatedTask.id, updatedTask);
+      setOutboxCount(syncManager.getOutboxCount());
+    }
+  };
+
+  // Update Admin Official Sosmed & Mandatory Onboarding Task
+  const handleUpdateAdminOfficialSosmed = async (
+    socialAccounts: MemberSocialAccounts,
+    createMandatoryTask: boolean
+  ) => {
+    const updatedUser: TeamMember = {
+      ...currentUser,
+      socialAccounts,
+    };
+    setCurrentUser(updatedUser);
+    setTeamMembers((prev) => prev.map((m) => (m.id === currentUser.id ? updatedUser : m)));
+    syncManager.setCachedTeam(
+      teamMembers.map((m) => (m.id === currentUser.id ? updatedUser : m))
+    );
+
+    // Save to server
+    try {
+      await fetch(`/api/team/${currentUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ socialAccounts }),
+      });
+    } catch (e) {
+      console.warn('Gagal simpan sosmed admin ke server:', e);
+    }
+
+    // If createMandatoryTask is true, create or update the task
+    if (createMandatoryTask) {
+      const existingTask = tasks.find(
+        (t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin')
+      );
+      const subtasks = [];
+      if (socialAccounts.youtube) {
+        subtasks.push({
+          id: `sub-yt-${Date.now()}`,
+          title: `Subscribe YouTube Official Admin: ${socialAccounts.youtube}`,
+          completed: false,
+        });
+      }
+      if (socialAccounts.instagram) {
+        subtasks.push({
+          id: `sub-ig-${Date.now()}`,
+          title: `Follow Instagram Official Admin: ${socialAccounts.instagram}`,
+          completed: false,
+        });
+      }
+      if (socialAccounts.tiktok) {
+        subtasks.push({
+          id: `sub-tt-${Date.now()}`,
+          title: `Follow TikTok Official Admin: ${socialAccounts.tiktok}`,
+          completed: false,
+        });
+      }
+      if (socialAccounts.facebook) {
+        subtasks.push({
+          id: `sub-fb-${Date.now()}`,
+          title: `Ikuti Facebook / Media Lain Admin: ${socialAccounts.facebook}`,
+          completed: false,
+        });
+      }
+      if (subtasks.length === 0) {
+        subtasks.push({
+          id: `sub-gen-${Date.now()}`,
+          title: 'Ikuti & Pantau Informasi Resmi Admin TBK',
+          completed: false,
+        });
+      }
+
+      if (existingTask) {
+        const updatedTask: Task = {
+          ...existingTask,
+          title: '📌 [Wajib] Subscribe & Follow Media Sosial Official Admin TBK',
+          description:
+            'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.',
+          mediaLink: socialAccounts.youtube?.startsWith('http')
+            ? socialAccounts.youtube
+            : socialAccounts.instagram
+            ? `https://instagram.com/${socialAccounts.instagram.replace('@', '')}`
+            : undefined,
+          subtasks,
+          updatedAt: new Date().toISOString(),
+        };
+        handleUpdateTask(updatedTask);
+      } else {
+        handleCreateTask({
+          title: '📌 [Wajib] Subscribe & Follow Media Sosial Official Admin TBK',
+          description:
+            'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.',
+          priority: 'urgent',
+          category: 'algorithm_growth',
+          tags: ['WajibAdmin', 'OfficialAdmin', 'SinergiTBK'],
+          isOfficialMandatory: true,
+          mediaLink: socialAccounts.youtube?.startsWith('http')
+            ? socialAccounts.youtube
+            : socialAccounts.instagram
+            ? `https://instagram.com/${socialAccounts.instagram.replace('@', '')}`
+            : undefined,
+          subtasks,
+        });
+      }
+    }
+  };
+
   // Manual Trigger Sync
   const handleManualSync = async () => {
     setOnlineStatus('syncing');
@@ -589,17 +718,35 @@ export default function App() {
     }
   };
 
-  const handleAuthSuccess = (member: TeamMember) => {
+  const handleAuthSuccess = async (member: TeamMember) => {
     setCurrentUser(member);
     setIsLoggedIn(true);
 
-    // If new member, prepend to teamMembers
+    // If new member, prepend to teamMembers locally first for immediate responsiveness
     setTeamMembers((prev) => {
       const exists = prev.some((m) => m.id === member.id || m.email === member.email);
       const updated = exists ? prev.map((m) => (m.id === member.id ? member : m)) : [member, ...prev];
       syncManager.setCachedTeam(updated);
       return updated;
     });
+
+    // Send to central server so Admin and all devices receive the new member live
+    try {
+      const res = await fetch('/api/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(member),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.teamMembers) {
+          setTeamMembers(data.teamMembers);
+          syncManager.setCachedTeam(data.teamMembers);
+        }
+      }
+    } catch (err) {
+      console.warn('Sinkronisasi pendaftaran ke server disimpan secara lokal:', err);
+    }
 
     playLevelUpFanfare();
     confetti({
@@ -736,6 +883,8 @@ export default function App() {
               setTaskModalInitialStatus('todo');
               setIsTaskModalOpen(true);
             }}
+            onUpdateAdminOfficialSosmed={handleUpdateAdminOfficialSosmed}
+            onDeleteTask={handleDeleteTask}
           />
         )}
       </main>

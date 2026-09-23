@@ -17,8 +17,8 @@ import {
 import { NotificationItem, TeamMember } from '../types';
 
 interface NavbarProps {
-  activeTab: 'board' | 'calendar' | 'gamification' | 'analytics';
-  setActiveTab: (tab: 'board' | 'calendar' | 'gamification' | 'analytics') => void;
+  activeTab: 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor';
+  setActiveTab: (tab: 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor') => void;
   onlineStatus: 'online' | 'offline' | 'syncing';
   outboxCount: number;
   onManualSync: () => void;

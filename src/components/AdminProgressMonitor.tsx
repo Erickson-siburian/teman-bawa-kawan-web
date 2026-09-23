@@ -17,8 +17,12 @@ import {
   Sparkles,
   Phone,
   Mail,
+  Settings,
+  Trash2,
+  Save,
+  Radio,
 } from 'lucide-react';
-import { Task, TeamMember, TaskStatus } from '../types';
+import { Task, TeamMember, TaskStatus, MemberSocialAccounts } from '../types';
 
 interface AdminProgressMonitorProps {
   tasks: Task[];
@@ -27,6 +31,8 @@ interface AdminProgressMonitorProps {
   onSelectTask?: (task: Task) => void;
   onUpdateTaskStatus?: (taskId: string, newStatus: TaskStatus) => void;
   onOpenNewTaskModal?: () => void;
+  onUpdateAdminOfficialSosmed?: (socials: MemberSocialAccounts, createMandatoryTask: boolean) => void;
+  onDeleteTask?: (taskId: string) => void;
 }
 
 export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
@@ -36,10 +42,25 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
   onSelectTask,
   onUpdateTaskStatus,
   onOpenNewTaskModal,
+  onUpdateAdminOfficialSosmed,
+  onDeleteTask,
 }) => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'in_progress' | 'unassigned'>('all');
   const [searchMember, setSearchMember] = useState('');
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+
+  // Official Admin Sosmed settings state
+  const [showSosmedSettings, setShowSosmedSettings] = useState(false);
+  const [officialYoutube, setOfficialYoutube] = useState(currentUser.socialAccounts?.youtube || '');
+  const [officialInstagram, setOfficialInstagram] = useState(currentUser.socialAccounts?.instagram || '');
+  const [officialTiktok, setOfficialTiktok] = useState(currentUser.socialAccounts?.tiktok || '');
+  const [officialFacebook, setOfficialFacebook] = useState(currentUser.socialAccounts?.facebook || '');
+  const [sosmedSavedMessage, setSosmedSavedMessage] = useState('');
+
+  // Check if mandatory onboarding task exists
+  const mandatoryTask = useMemo(() => {
+    return tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
+  }, [tasks]);
 
   // Overall Task Aggregates
   const totalTasks = tasks.length;
@@ -150,6 +171,15 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
 
           {/* Quick Action Button */}
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowSosmedSettings(!showSosmedSettings)}
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm border border-white/20 transition-all cursor-pointer flex items-center gap-2"
+            >
+              <Settings className="w-4 h-4 text-amber-300" />
+              <span>{showSosmedSettings ? 'Tutup Pengaturan Medsos' : 'Atur Medsos Resmi Admin'}</span>
+            </button>
+
             {onOpenNewTaskModal && (
               <button
                 type="button"
@@ -203,6 +233,178 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Official Admin Social Media & Mandatory Task Settings Card */}
+      {showSosmedSettings && (
+        <div className="bg-white rounded-3xl p-6 border-2 border-amber-300 shadow-md animate-in fade-in slide-in-from-top-3 duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-black text-[10px] uppercase tracking-wide">
+                  Official Admin TBK
+                </span>
+                <h2 className="text-lg font-black text-slate-900">
+                  Pengaturan Media Sosial Resmi Admin &amp; Tugas Orientasi Member
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Tentukan akun media sosial resmi Admin (YouTube, Instagram, TikTok) yang wajib di-subscribe/follow oleh member baru.
+              </p>
+            </div>
+
+            {/* Status Indicator */}
+            <div className="flex items-center gap-2">
+              {mandatoryTask ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Tugas Wajib: AKTIF
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold border border-slate-300">
+                  <span className="w-2 h-2 rounded-full bg-slate-400" />
+                  Tugas Wajib: NONAKTIF (Member Bebas)
+                </span>
+              )}
+            </div>
+          </div>
+
+          {sosmedSavedMessage && (
+            <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{sosmedSavedMessage}</span>
+            </div>
+          )}
+
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* YouTube */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <span className="text-red-600 font-bold">▶ YouTube Official Admin</span>
+              </label>
+              <input
+                type="text"
+                value={officialYoutube}
+                onChange={(e) => setOfficialYoutube(e.target.value)}
+                placeholder="Contoh: https://youtube.com/@namaChannelAnda"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-amber-400 bg-slate-50/50"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Tautan channel resmi yang akan dibuka oleh anggota baru saat menekan tombol tonton/subscribe.
+              </p>
+            </div>
+
+            {/* Instagram */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <span className="text-pink-600 font-bold">📷 Instagram Official Admin</span>
+              </label>
+              <input
+                type="text"
+                value={officialInstagram}
+                onChange={(e) => setOfficialInstagram(e.target.value)}
+                placeholder="Contoh: @akun_resmi_admin"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-amber-400 bg-slate-50/50"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Username IG resmi admin untuk disinergikan &amp; di-follow oleh anggota komunitas.
+              </p>
+            </div>
+
+            {/* TikTok */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <span className="text-slate-900 font-bold">♪ TikTok Official Admin</span>
+              </label>
+              <input
+                type="text"
+                value={officialTiktok}
+                onChange={(e) => setOfficialTiktok(e.target.value)}
+                placeholder="Contoh: @akun_tiktok_admin"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-amber-400 bg-slate-50/50"
+              />
+            </div>
+
+            {/* Facebook / Media Lain */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <span className="text-blue-600 font-bold">f Facebook / Media Lain</span>
+              </label>
+              <input
+                type="text"
+                value={officialFacebook}
+                onChange={(e) => setOfficialFacebook(e.target.value)}
+                placeholder="Contoh: Nama Fanspage / Akun FB"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-amber-400 bg-slate-50/50"
+              />
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const newSocials: MemberSocialAccounts = {
+                    ...currentUser.socialAccounts,
+                    youtube: officialYoutube.trim(),
+                    instagram: officialInstagram.trim(),
+                    tiktok: officialTiktok.trim(),
+                    facebook: officialFacebook.trim(),
+                  };
+                  if (onUpdateAdminOfficialSosmed) {
+                    onUpdateAdminOfficialSosmed(newSocials, true);
+                    setSosmedSavedMessage('Akun resmi disimpan & Tugas Orientasi Wajib Member Baru berhasil diaktifkan!');
+                    setTimeout(() => setSosmedSavedMessage(''), 4000);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Simpan &amp; Aktifkan Tugas Wajib Member</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const newSocials: MemberSocialAccounts = {
+                    ...currentUser.socialAccounts,
+                    youtube: officialYoutube.trim(),
+                    instagram: officialInstagram.trim(),
+                    tiktok: officialTiktok.trim(),
+                    facebook: officialFacebook.trim(),
+                  };
+                  if (onUpdateAdminOfficialSosmed) {
+                    onUpdateAdminOfficialSosmed(newSocials, false);
+                    setSosmedSavedMessage('Akun resmi Admin berhasil disimpan (tanpa membuat tugas wajib).');
+                    setTimeout(() => setSosmedSavedMessage(''), 4000);
+                  }
+                }}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+              >
+                <span>Simpan Akun Saja</span>
+              </button>
+            </div>
+
+            {mandatoryTask && onDeleteTask && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Apakah Anda yakin ingin menonaktifkan dan menghapus tugas follow sosmed admin bagi member baru?')) {
+                    onDeleteTask(mandatoryTask.id);
+                    setSosmedSavedMessage('Tugas wajib follow sosmed admin telah dinonaktifkan.');
+                    setTimeout(() => setSosmedSavedMessage(''), 4000);
+                  }
+                }}
+                className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>Nonaktifkan / Hapus Tugas Wajib Ini</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Filter Tabs and Search Bar */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
