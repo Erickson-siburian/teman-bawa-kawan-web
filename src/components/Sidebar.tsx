@@ -22,8 +22,8 @@ import { Logo } from './Logo';
 import { NotificationItem, TeamMember } from '../types';
 
 interface SidebarProps {
-  activeTab: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics';
-  setActiveTab: (tab: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics') => void;
+  activeTab: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor';
+  setActiveTab: (tab: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor') => void;
   onlineStatus: 'online' | 'offline' | 'syncing';
   outboxCount: number;
   onManualSync: () => void;
@@ -73,6 +73,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: CheckCircle2,
       desc: 'Papan Kanban Kolaborasi',
     },
+    ...(currentUser.userType === 'admin'
+      ? [
+          {
+            id: 'admin_monitor' as const,
+            label: 'Monitor Tugas Member',
+            icon: ShieldCheck,
+            desc: 'Progres Selesai & Belum',
+            isAdminOnly: true,
+          },
+        ]
+      : []),
     {
       id: 'calendar' as const,
       label: 'Kalender Editorial',
@@ -164,7 +175,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <Icon className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs truncate">{item.label}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs truncate">{item.label}</p>
+                    {item.isAdminOnly && (
+                      <span className="px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 text-[9px] font-black uppercase">
+                        Admin
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[10px] text-slate-400 font-normal truncate">{item.desc}</p>
                 </div>
               </div>

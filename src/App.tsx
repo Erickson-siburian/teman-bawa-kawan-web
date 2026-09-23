@@ -7,6 +7,7 @@ import { TaskDetailDrawer } from './components/TaskDetailDrawer';
 import { CalendarView } from './components/CalendarView';
 import { GamificationView } from './components/GamificationView';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
+import { AdminProgressMonitor } from './components/AdminProgressMonitor';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AuthRegistrationModal } from './components/AuthRegistrationModal';
 import { NotificationItem, ReferralRecord, Task, TaskStatus, TeamMember } from './types';
@@ -16,7 +17,7 @@ import { initialTeamMembers, initialTasks, initialNotifications, initialReferral
 import confetti from 'canvas-confetti';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'landing' | 'board' | 'calendar' | 'gamification' | 'analytics'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor'>('landing');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -723,6 +724,20 @@ export default function App() {
         )}
 
         {activeTab === 'analytics' && <AnalyticsDashboard tasks={tasks} teamMembers={teamMembers} />}
+
+        {activeTab === 'admin_monitor' && (
+          <AdminProgressMonitor
+            tasks={tasks}
+            teamMembers={teamMembers}
+            currentUser={currentUser}
+            onSelectTask={setSelectedTask}
+            onUpdateTaskStatus={handleUpdateTaskStatus}
+            onOpenNewTaskModal={() => {
+              setTaskModalInitialStatus('todo');
+              setIsTaskModalOpen(true);
+            }}
+          />
+        )}
       </main>
 
       {/* Modals & Drawers */}
