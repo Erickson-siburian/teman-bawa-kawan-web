@@ -100,15 +100,12 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
               Tentang Kami
             </button>
 
-            {/* Layanan & Fitur: Opens 11 Social Media Platforms Modal */}
+            {/* Layanan & Fitur: Opens Social Media Platforms Modal */}
             <button
               onClick={() => setIsLayananFiturOpen(true)}
-              className="hover:text-amber-400 transition-colors cursor-pointer flex items-center gap-1.5"
+              className="hover:text-amber-400 transition-colors cursor-pointer"
             >
-              <span>Layanan &amp; Fitur</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/30 text-[10px] text-amber-300">
-                11 Sosmed
-              </span>
+              Layanan &amp; Fitur
             </button>
 
             {/* Kalender Editorial */}
@@ -125,7 +122,7 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
               Kalender Editorial
             </button>
 
-            {/* Member Aktif (Previously Gamifikasi Sinergi) */}
+            {/* Member Aktif */}
             <button
               onClick={() => {
                 if (isLoggedIn) {
@@ -134,12 +131,9 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
                   onOpenAuthModal('login');
                 }
               }}
-              className="hover:text-amber-400 transition-colors cursor-pointer flex items-center gap-1.5"
+              className="hover:text-amber-400 transition-colors cursor-pointer"
             >
-              <span>Member Aktif</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-amber-400/20 text-[10px] text-amber-300">
-                {allMembers.length}
-              </span>
+              Member Aktif
             </button>
 
             {/* Dashboard Trend (Previously Analitik Cuan) */}

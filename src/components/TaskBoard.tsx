@@ -15,6 +15,7 @@ import {
   AlertCircle,
   LayoutGrid,
   List,
+  ExternalLink,
 } from 'lucide-react';
 import { Task, TaskCategory, TaskPriority, TaskStatus, TeamMember } from '../types';
 
@@ -299,12 +300,26 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                             {task.title}
                           </h4>
 
-                          {/* Monetization Target Badge */}
-                          {task.monetizationGoal && (
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 text-[10px] font-semibold border border-amber-200">
-                              <span>🎯 {task.monetizationGoal}</span>
-                            </div>
-                          )}
+                          {/* Monetization Target & Media Link Badge */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {task.monetizationGoal && (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 text-[10px] font-semibold border border-amber-200">
+                                <span>🎯 {task.monetizationGoal}</span>
+                              </div>
+                            )}
+                            {task.mediaLink && (
+                              <a
+                                href={task.mediaLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-[10px] font-semibold border border-red-200 hover:bg-red-100 transition-colors"
+                              >
+                                <span>▶ Link Sosmed</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            )}
+                          </div>
 
                           {/* Subtasks progress bar */}
                           {hasSubtasks && (

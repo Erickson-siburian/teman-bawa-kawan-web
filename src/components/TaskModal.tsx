@@ -35,6 +35,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [category, setCategory] = useState<TaskCategory>('monetization_sponsor');
   const [platform, setPlatform] = useState<SocialPlatform>('youtube');
   const [monetizationGoal, setMonetizationGoal] = useState<string>('');
+  const [mediaLink, setMediaLink] = useState<string>('');
   const [assigneeId, setAssigneeId] = useState(currentUser.id);
   const [buddyId, setBuddyId] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>(() => {
@@ -92,6 +93,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         priority,
         category,
         platform,
+        mediaLink: mediaLink.trim() || undefined,
         monetizationGoal: monetizationGoal.trim() || undefined,
         creatorId: currentUser.id,
         creatorName: currentUser.name,
@@ -235,6 +237,24 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
               />
             </div>
+          </div>
+
+          {/* Link YouTube / Media Sosial (Poin 5) */}
+          <div className="p-3 bg-red-50/40 rounded-xl border border-red-100">
+            <label className="block font-semibold text-slate-800 mb-1 flex items-center gap-1.5">
+              <span className="text-red-600 font-bold">▶ / 🔗</span>
+              <span>Link YouTube atau Media Sosial Tugas / Konten</span>
+            </label>
+            <input
+              type="url"
+              value={mediaLink}
+              onChange={(e) => setMediaLink(e.target.value)}
+              placeholder="https://youtube.com/watch?v=... atau https://instagram.com/p/..."
+              className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">
+              Masukkan tautan YouTube, video TikTok, postingan Instagram, atau sosmed lain untuk ditonton/didiskusikan bersama rekan kawan.
+            </p>
           </div>
 
           {/* Grid: Kategori, Prioritas, Tenggat Waktu */}

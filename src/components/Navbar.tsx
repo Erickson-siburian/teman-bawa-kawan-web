@@ -113,10 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <Award className="w-4 h-4" />
-              Gamifikasi & Hadiah
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
-                Lv {currentUser.level}
-              </span>
+              Member Aktif
             </button>
             <button
               id="nav-tab-analytics"
@@ -344,7 +341,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Award className="w-4 h-4" />
-            Gamifikasi
+            Member Aktif
           </button>
           <button
             onClick={() => setActiveTab('analytics')}

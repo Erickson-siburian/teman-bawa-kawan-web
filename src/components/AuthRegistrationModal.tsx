@@ -13,6 +13,8 @@ import {
   LogIn,
   UserPlus,
   Info,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { MemberSocialAccounts, TeamMember } from '../types';
@@ -59,8 +61,11 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   });
 
   // Login-specific state
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   if (!isOpen) return null;
@@ -70,14 +75,32 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     setErrorMessage('');
 
     if (!nama.trim()) {
-      setErrorMessage('Silakan isi Nama lengkap Anda.');
+      setErrorMessage('Nama Lengkap wajib diisi.');
       return;
     }
     if (!email.trim()) {
-      setErrorMessage('Silakan isi alamat Email aktif Anda.');
+      setErrorMessage('Alamat Email aktif wajib diisi.');
       return;
     }
-    if (password && password !== ulangiPassword) {
+    if (!nomorHp.trim()) {
+      setErrorMessage('Nomor HP / WhatsApp wajib diisi.');
+      return;
+    }
+
+    // Mandatory social media check (at least one valid social media or primary accounts)
+    const filledSocials = Object.values(socials).filter(
+      (v) => typeof v === 'string' && v.trim().length > 0
+    );
+    if (filledSocials.length === 0) {
+      setErrorMessage('Akun media sosial wajib diisi (minimal salah satu: Instagram, YouTube, TikTok, dll.) untuk verifikasi keanggotaan TBK.');
+      return;
+    }
+
+    if (!password) {
+      setErrorMessage('Password wajib dibuat untuk keamanan akun.');
+      return;
+    }
+    if (password !== ulangiPassword) {
       setErrorMessage('Password Baru dan Ulangi Password tidak cocok.');
       return;
     }
@@ -86,6 +109,8 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       id: `member-${Date.now()}`,
       name: nama.trim(),
       email: email.trim(),
+      password: password,
+      userType: 'user',
       role: pekerjaan.trim() || 'Kreator & Komentator Terverifikasi',
       avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(nama)}`,
       gender: jenisKelamin,
@@ -117,23 +142,28 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     e.preventDefault();
     setErrorMessage('');
 
-    const targetEmail = loginEmail.trim().toLowerCase();
-    const matched = existingMembers.find(
-      (m) => m.email.toLowerCase() === targetEmail || m.name.toLowerCase() === targetEmail
-    );
+    const target = loginIdentifier.trim().toLowerCase();
+    const cleanPhone = loginIdentifier.replace(/[^0-9]/g, '');
+
+    // Cari member berdasarkan Nama, Email, ATAU Nomor HP
+    const matched = existingMembers.find((m) => {
+      const matchEmail = m.email.toLowerCase() === target;
+      const matchName = m.name.toLowerCase() === target;
+      const memberPhoneClean = (m.phoneNumber || '').replace(/[^0-9]/g, '');
+      const matchPhone = cleanPhone.length >= 6 && memberPhoneClean === cleanPhone;
+      return matchEmail || matchName || matchPhone;
+    });
 
     if (matched) {
+      // Verifikasi password jika akun memiliki password
+      if (matched.password && matched.password !== loginPassword) {
+        setErrorMessage('Password yang Anda masukkan salah. Silakan coba lagi.');
+        return;
+      }
       onAuthSuccess(matched);
       onClose();
     } else {
-      // Fallback create demo session or notify
-      if (existingMembers.length > 0) {
-        // Log in as first available or create quick member
-        onAuthSuccess(existingMembers[0]);
-        onClose();
-      } else {
-        setErrorMessage('Akun belum terdaftar. Silakan lakukan pendaftaran terlebih dahulu.');
-      }
+      setErrorMessage('User ID (Nama, Email, atau No. HP) tidak ditemukan dalam database member.');
     }
   };
 
@@ -306,13 +336,21 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                         <Lock className="w-4 h-4" />
                       </div>
                       <input
-                        type="password"
+                        type={showRegPassword ? 'text' : 'password'}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••••••"
                         className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegPassword(!showRegPassword)}
+                        className="px-3 text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center focus:outline-hidden"
+                        title={showRegPassword ? 'Sembunyikan password' : 'Lihat password'}
+                      >
+                        {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </div>
 
@@ -326,13 +364,21 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                         <Lock className="w-4 h-4" />
                       </div>
                       <input
-                        type="password"
+                        type={showRegConfirmPassword ? 'text' : 'password'}
                         required
                         value={ulangiPassword}
                         onChange={(e) => setUlangiPassword(e.target.value)}
                         placeholder="••••••••••••"
                         className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                        className="px-3 text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center focus:outline-hidden"
+                        title={showRegConfirmPassword ? 'Sembunyikan password' : 'Lihat password'}
+                      >
+                        {showRegConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </div>
 
@@ -629,21 +675,24 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Email / Nama Pengguna *
+                  User ID (Nama / Email / No. HP) *
                 </label>
                 <div className="flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
                   <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
-                    <Mail className="w-4 h-4" />
+                    <User className="w-4 h-4" />
                   </div>
                   <input
                     type="text"
                     required
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="contoh: haihaihai9191@gmail.com"
+                    value={loginIdentifier}
+                    onChange={(e) => setLoginIdentifier(e.target.value)}
+                    placeholder="Masukkan Nama, Email, atau No. HP Anda"
                     className="flex-1 px-3 py-2.5 text-sm text-slate-900 focus:outline-hidden"
                   />
                 </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Anda dapat menggunakan Nama lengkap, alamat Email, atau No. HP yang didaftarkan.
+                </p>
               </div>
 
               <div>
@@ -655,13 +704,21 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
-                    type="password"
+                    type={showLoginPassword ? 'text' : 'password'}
                     required
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="••••••••••••"
                     className="flex-1 px-3 py-2.5 text-sm text-slate-900 focus:outline-hidden"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="px-3 text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center focus:outline-hidden"
+                    title={showLoginPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 

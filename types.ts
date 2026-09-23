@@ -42,7 +42,7 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  isEncrypted: boolean;
+  isEncrypted?: boolean;
   encryptedData?: EncryptedPayload;
   status: TaskStatus;
   priority: TaskPriority;
@@ -58,6 +58,8 @@ export interface Task {
   category: TaskCategory;
   platform?: SocialPlatform;
   contentFormat?: ContentFormat;
+  mediaLink?: string; // Link YouTube / Sosmed tugas / follow admin
+  isOfficialMandatory?: boolean; // Wajib follow admin sebelum bergabung penuh
   monetizationGoal?: string; // Target monetisasi (misal: "Sponsor Brand X", "Affiliate Review", "4.000 Jam Tayang YT")
   tags: string[];
   subtasks: Subtask[];
@@ -98,6 +100,8 @@ export interface TeamMember {
   id: string;
   name: string;
   email: string;
+  password?: string;
+  userType?: 'admin' | 'user';
   role: string;
   avatar: string;
   gender?: 'Laki-Laki' | 'Perempuan';

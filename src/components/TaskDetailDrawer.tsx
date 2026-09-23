@@ -164,6 +164,34 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
             </div>
           </div>
 
+          {/* Link YouTube / Media Sosial (Poin 5) */}
+          {task.mediaLink && (
+            <div className="p-4 rounded-xl bg-red-50/60 border border-red-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-red-950 flex items-center gap-1.5 text-xs">
+                  <span className="text-base">▶</span> Link YouTube / Media Sosial Terlampir
+                </span>
+                <a
+                  href={task.mediaLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors"
+                >
+                  <span>Buka Link</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+              <p className="text-xs font-mono text-slate-600 truncate bg-white p-2 rounded-lg border border-red-100">
+                {task.mediaLink}
+              </p>
+              {task.isOfficialMandatory && (
+                <div className="p-2.5 rounded-lg bg-amber-100/70 border border-amber-300 text-amber-900 text-xs font-semibold">
+                  ⚡ <strong>Pemberitahuan Wajib:</strong> Seluruh anggota baru wajib menonton & subscribe/follow channel di atas sebelum bergabung penuh dalam aktivitas kolaborasi.
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Teman Bawa Kawan (TBK) Partner Duo Box */}
           <div className="p-4 rounded-xl bg-linear-to-r from-amber-50/80 to-indigo-50/50 border border-amber-200/80 space-y-3">
             <div className="flex items-center justify-between">
