@@ -338,6 +338,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             <CheckCircle2 className="w-4 h-4" />
             Papan
           </button>
+          {currentUser.userType === 'admin' && (
+            <button
+              onClick={() => setActiveTab('admin_monitor')}
+              className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded-lg ${
+                activeTab === 'admin_monitor' ? 'text-amber-600 font-bold' : 'text-amber-700'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-amber-500" />
+              Monitor
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('calendar')}
             className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded-lg ${
