@@ -731,30 +731,70 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
               </button>
             </form>
 
-            {/* Quick Demo Login Switcher */}
+            {/* Quick Login with Clear Separation between Admin and User */}
             <div className="pt-5 border-t border-slate-200">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 text-center">
-                Atau Masuk Cepat Sebagai Member Terdaftar:
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">
+                Pilihan Akun Uji Coba (Pemisahan Akun Admin &amp; User):
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {existingMembers.slice(0, 3).map((m) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Admin Account */}
+                {existingMembers.filter(m => m.userType === 'admin').slice(0, 1).map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => handleQuickLoginAs(m)}
-                    className="p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/60 transition-all flex items-center gap-3 text-left cursor-pointer group"
+                    className="p-3.5 rounded-2xl border-2 border-amber-300 bg-amber-50/50 hover:bg-amber-100/70 transition-all flex items-center gap-3 text-left cursor-pointer group shadow-xs"
                   >
                     <img
                       src={m.avatar}
                       alt={m.name}
-                      className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-300 group-hover:ring-emerald-500"
+                      className="w-10 h-10 rounded-full object-cover ring-2 ring-amber-400"
                       referrerPolicy="no-referrer"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-900 truncate group-hover:text-emerald-700">
-                        {m.name}
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-black text-slate-900 truncate">
+                          {m.name}
+                        </p>
+                        <span className="px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[9px] uppercase">
+                          Akun Admin
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-amber-900 font-medium truncate mt-0.5">
+                        ID: {m.email}
                       </p>
-                      <p className="text-[10px] text-slate-500 truncate">{m.role || 'Member Aktif'}</p>
+                      <p className="text-[9px] text-slate-500">Akses penuh kelola tugas &amp; privasi anggota</p>
+                    </div>
+                  </button>
+                ))}
+
+                {/* User Account */}
+                {existingMembers.filter(m => m.userType === 'user').slice(0, 1).map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => handleQuickLoginAs(m)}
+                    className="p-3.5 rounded-2xl border-2 border-emerald-300 bg-emerald-50/50 hover:bg-emerald-100/70 transition-all flex items-center gap-3 text-left cursor-pointer group shadow-xs"
+                  >
+                    <img
+                      src={m.avatar}
+                      alt={m.name}
+                      className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-black text-slate-900 truncate">
+                          {m.name}
+                        </p>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900 font-black text-[9px] uppercase">
+                          Akun User
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-emerald-800 font-medium truncate mt-0.5">
+                        ID: {m.email}
+                      </p>
+                      <p className="text-[9px] text-slate-500">Member reguler, privasi data aman terlindungi</p>
                     </div>
                   </button>
                 ))}

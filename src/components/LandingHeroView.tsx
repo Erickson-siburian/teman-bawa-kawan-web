@@ -108,47 +108,56 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
               Layanan &amp; Fitur
             </button>
 
-            {/* Kalender Editorial */}
-            <button
-              onClick={() => {
-                if (isLoggedIn) {
-                  onEnterDashboard('calendar');
-                } else {
-                  onOpenAuthModal('login');
-                }
-              }}
-              className="hover:text-amber-400 transition-colors cursor-pointer"
-            >
-              Kalender Editorial
-            </button>
+            {/* Kalender Editorial: Only active after login */}
+            {isLoggedIn ? (
+              <button
+                onClick={() => onEnterDashboard('calendar')}
+                className="hover:text-amber-400 transition-colors cursor-pointer"
+              >
+                Kalender Editorial
+              </button>
+            ) : (
+              <span
+                className="text-emerald-100/40 cursor-default select-none"
+                title="Tersedia setelah mendaftar atau login"
+              >
+                Kalender Editorial
+              </span>
+            )}
 
-            {/* Member Aktif */}
-            <button
-              onClick={() => {
-                if (isLoggedIn) {
-                  onEnterDashboard('gamification');
-                } else {
-                  onOpenAuthModal('login');
-                }
-              }}
-              className="hover:text-amber-400 transition-colors cursor-pointer"
-            >
-              Member Aktif
-            </button>
+            {/* Member Aktif: Only active after login */}
+            {isLoggedIn ? (
+              <button
+                onClick={() => onEnterDashboard('gamification')}
+                className="hover:text-amber-400 transition-colors cursor-pointer"
+              >
+                Member Aktif
+              </button>
+            ) : (
+              <span
+                className="text-emerald-100/40 cursor-default select-none"
+                title="Tersedia setelah mendaftar atau login"
+              >
+                Member Aktif
+              </span>
+            )}
 
-            {/* Dashboard Trend (Previously Analitik Cuan) */}
-            <button
-              onClick={() => {
-                if (isLoggedIn) {
-                  onEnterDashboard('analytics');
-                } else {
-                  onOpenAuthModal('login');
-                }
-              }}
-              className="hover:text-amber-400 transition-colors cursor-pointer"
-            >
-              Dashboard Trend
-            </button>
+            {/* Dashboard Trend: Only active after login */}
+            {isLoggedIn ? (
+              <button
+                onClick={() => onEnterDashboard('analytics')}
+                className="hover:text-amber-400 transition-colors cursor-pointer"
+              >
+                Dashboard Trend
+              </button>
+            ) : (
+              <span
+                className="text-emerald-100/40 cursor-default select-none"
+                title="Tersedia setelah mendaftar atau login"
+              >
+                Dashboard Trend
+              </span>
+            )}
           </nav>
 
           {/* Action CTAs: Conditional on Login State */}
@@ -434,15 +443,18 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
             >
               Layanan &amp; Fitur
             </button>
-            <button
-              onClick={() => {
-                if (isLoggedIn) onEnterDashboard('gamification');
-                else onOpenAuthModal('login');
-              }}
-              className="hover:text-amber-400 transition-colors"
-            >
-              Member Aktif
-            </button>
+            {isLoggedIn ? (
+              <button
+                onClick={() => onEnterDashboard('gamification')}
+                className="hover:text-amber-400 transition-colors"
+              >
+                Member Aktif
+              </button>
+            ) : (
+              <span className="text-emerald-200/40 cursor-default">
+                Member Aktif
+              </span>
+            )}
           </div>
         </div>
       </footer>

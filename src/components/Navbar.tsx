@@ -280,33 +280,46 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
 
                   <div className="mt-2">
-                    <p className="text-[11px] font-semibold text-slate-400 px-2 py-1">GANTI SUDUT PANDANG KAWAN:</p>
-                    {allMembers.map((member) => (
-                      <button
-                        key={member.id}
-                        onClick={() => {
-                          onSwitchUser(member);
-                          setShowUserMenu(false);
-                        }}
-                        className={`w-full flex items-center gap-2 p-2 rounded-lg text-left text-xs transition-colors ${
-                          member.id === currentUser.id
-                            ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                            : 'hover:bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        <img
-                          src={member.avatar}
-                          alt={member.name}
-                          className="w-6 h-6 rounded-full object-cover"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate">{member.name}</p>
-                          <p className="text-[10px] text-slate-400 truncate">{member.role}</p>
-                        </div>
-                        {member.id === currentUser.id && <UserCheck className="w-4 h-4 text-indigo-600" />}
-                      </button>
-                    ))}
+                    {currentUser.userType === 'admin' ? (
+                      <>
+                        <p className="text-[10px] font-semibold text-amber-700 px-2 py-1 flex items-center gap-1">
+                          <span>👑</span> AKSES ADMIN - GANTI USER:
+                        </p>
+                        {allMembers.map((member) => (
+                          <button
+                            key={member.id}
+                            onClick={() => {
+                              onSwitchUser(member);
+                              setShowUserMenu(false);
+                            }}
+                            className={`w-full flex items-center gap-2 p-2 rounded-lg text-left text-xs transition-colors ${
+                              member.id === currentUser.id
+                                ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <img
+                              src={member.avatar}
+                              alt={member.name}
+                              className="w-6 h-6 rounded-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="truncate font-medium">{member.name}</p>
+                              <p className="text-[10px] text-slate-400 truncate">{member.email}</p>
+                            </div>
+                            {member.id === currentUser.id && <UserCheck className="w-4 h-4 text-indigo-600" />}
+                          </button>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="p-2.5 bg-slate-50 rounded-lg text-center space-y-1">
+                        <p className="text-xs font-bold text-slate-700">Akun Member Terverifikasi</p>
+                        <p className="text-[11px] text-slate-500 leading-tight">
+                          Privasi Anda terlindungi. Fitur pergantian akun hanya dapat digunakan oleh administrator resmi.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -105,10 +105,10 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
               Sistem Kolaborasi Pegiat Medsos "Teman Bawa Kawan" (TBK)
             </div>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              Saling Support Konten Kreator, Tembus Syarat Monetisasi Bareng!
+              Saling Support &amp; Berkembang Bersama, Raih Sukses Konten Medsos!
             </h2>
             <p className="text-xs sm:text-sm text-indigo-100 leading-relaxed">
-              Tiap konten kolaborasi (duet/cross-promo, live streaming affiliate, audit naskah/thumbnail) yang diselesaikan tepat waktu bersama <strong>Kawan Pendamping</strong> melipatgandakan perolehan <strong>+120 XP</strong>, mendongkrak jam tayang & followers, serta memberikan <strong>50 Poin Referal</strong> ke sesama kreator!
+              Mari saling support, bergotong-royong, dan bertumbuh bersama sesama kreator! Setiap tugas kolaborasi (tonton bareng, like &amp; komentar bermutu, share, follow, review Google Map, hingga duet video) diselesaikan secara tulus untuk memperluas jangkauan dan mendongkrak performa akun semua kawan!
             </p>
           </div>
 
