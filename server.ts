@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 
 interface TaskComment {
@@ -54,6 +55,8 @@ interface Task {
     | 'ops';
   platform?: 'youtube' | 'tiktok' | 'instagram' | 'affiliate_shop' | 'multiplatform';
   monetizationGoal?: string;
+  mediaLink?: string;
+  isOfficialMandatory?: boolean;
   tags: string[];
   subtasks: Subtask[];
   comments: TaskComment[];
@@ -465,6 +468,60 @@ let referrals: ReferralRecord[] = [
   },
 ];
 
+// Persistent File Storage Path
+const DATA_DIR = path.join(process.cwd(), 'data');
+const DB_FILE = path.join(DATA_DIR, 'database.json');
+
+function initDatabase() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (fs.existsSync(DB_FILE)) {
+      const raw = fs.readFileSync(DB_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.teamMembers) && data.teamMembers.length > 0) {
+        teamMembers = data.teamMembers;
+      }
+      if (Array.isArray(data.tasks) && data.tasks.length > 0) {
+        tasks = data.tasks;
+      }
+      if (Array.isArray(data.notifications)) {
+        notifications = data.notifications;
+      }
+      if (Array.isArray(data.referrals)) {
+        referrals = data.referrals;
+      }
+      console.log(`[Storage] Loaded ${teamMembers.length} members and ${tasks.length} tasks from disk.`);
+    } else {
+      saveDatabase();
+    }
+  } catch (err) {
+    console.warn('[Storage] Error initializing database file:', err);
+  }
+}
+
+function saveDatabase() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const data = {
+      teamMembers,
+      tasks,
+      notifications,
+      referrals,
+      savedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('[Storage] Error saving database file:', err);
+  }
+}
+
+// Initialize persistence immediately
+initDatabase();
+
 // Active SSE client connections for real-time collaboration
 const sseClients: Response[] = [];
 
@@ -485,7 +542,7 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
-  // SSE (Server-Sent Events) Endpoint for real-time live sync
+  // SSE (Server-Sent Events) Endpoint for real-time live sync with keep-alive
   app.get('/api/events', (req: Request, res: Response) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -497,7 +554,17 @@ async function startServer() {
     // Initial greeting
     res.write(`event: connected\ndata: ${JSON.stringify({ status: 'connected', clients: sseClients.length })}\n\n`);
 
+    // Keepalive heartbeat every 15s to keep connection alive on Cloud Run & mobile networks
+    const keepAliveTimer = setInterval(() => {
+      try {
+        res.write(': keepalive\n\n');
+      } catch {
+        clearInterval(keepAliveTimer);
+      }
+    }, 15000);
+
     req.on('close', () => {
+      clearInterval(keepAliveTimer);
       const idx = sseClients.indexOf(res);
       if (idx !== -1) {
         sseClients.splice(idx, 1);
@@ -514,7 +581,7 @@ async function startServer() {
   app.post('/api/tasks', (req: Request, res: Response) => {
     const newTaskData = req.body;
     const newTask: Task = {
-      id: `task-${Date.now()}`,
+      id: newTaskData.id || `task-${Date.now()}`,
       title: newTaskData.title || 'Tugas Baru TBK',
       description: newTaskData.description || '',
       isEncrypted: !!newTaskData.isEncrypted,
@@ -535,11 +602,16 @@ async function startServer() {
       subtasks: newTaskData.subtasks || [],
       comments: [],
       referralCodeUsed: newTaskData.referralCodeUsed,
-      createdAt: new Date().toISOString(),
+      isOfficialMandatory: !!newTaskData.isOfficialMandatory,
+      mediaLink: newTaskData.mediaLink,
+      platform: newTaskData.platform,
+      monetizationGoal: newTaskData.monetizationGoal,
+      createdAt: newTaskData.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
     tasks.unshift(newTask);
+    saveDatabase();
 
     // Create notification if buddy is assigned
     if (newTask.buddyId && newTask.buddyName) {
@@ -651,6 +723,7 @@ async function startServer() {
     };
 
     tasks[taskIndex] = updatedTask;
+    saveDatabase();
 
     broadcastEvent('task_updated', updatedTask);
     broadcastEvent('team_updated', teamMembers);
@@ -674,6 +747,7 @@ async function startServer() {
     }
 
     const deletedTask = tasks.splice(taskIndex, 1)[0];
+    saveDatabase();
     broadcastEvent('task_deleted', { id: deletedTask.id });
     res.json({ success: true, id });
   });
@@ -700,6 +774,7 @@ async function startServer() {
 
     task.comments.push(newComment);
     task.updatedAt = new Date().toISOString();
+    saveDatabase();
 
     broadcastEvent('task_updated', task);
     res.status(201).json({ success: true, comment: newComment, task });
@@ -742,6 +817,8 @@ async function startServer() {
         }
       }
     }
+
+    saveDatabase();
 
     // Broadcast full sync update
     broadcastEvent('sync_completed', { processedCount: processed.length, tasksCount: tasks.length });
@@ -795,15 +872,158 @@ async function startServer() {
       };
       notifications.unshift(registerNotif);
       broadcastEvent('notification_added', registerNotif);
+
+      // Automatically create personalized Mandatory Orientation Task for this new member!
+      // This ensures their status in Admin Progress Monitor immediately reflects 'Sedang Berproses (Orientasi Sosmed Admin)'
+      const adminUser = teamMembers.find((m) => m.userType === 'admin') || teamMembers[0];
+      const officialSocials = adminUser?.socialAccounts || {};
+      const hasOfficialSocials = !!(
+        officialSocials.youtube ||
+        officialSocials.instagram ||
+        officialSocials.tiktok ||
+        officialSocials.facebook
+      );
+
+      const orientationSubtasks: Subtask[] = [];
+      if (officialSocials.youtube) {
+        orientationSubtasks.push({
+          id: `sub-yt-${newMember.id}`,
+          title: `Subscribe & Tonton YouTube Official Admin (${officialSocials.youtube})`,
+          completed: false,
+        });
+      }
+      if (officialSocials.instagram) {
+        orientationSubtasks.push({
+          id: `sub-ig-${newMember.id}`,
+          title: `Follow Instagram Official Admin (${officialSocials.instagram})`,
+          completed: false,
+        });
+      }
+      if (officialSocials.tiktok) {
+        orientationSubtasks.push({
+          id: `sub-tt-${newMember.id}`,
+          title: `Follow TikTok Official Admin (${officialSocials.tiktok})`,
+          completed: false,
+        });
+      }
+      if (officialSocials.facebook) {
+        orientationSubtasks.push({
+          id: `sub-fb-${newMember.id}`,
+          title: `Follow Facebook Official Admin (${officialSocials.facebook})`,
+          completed: false,
+        });
+      }
+      if (orientationSubtasks.length === 0) {
+        orientationSubtasks.push({
+          id: `sub-gen-${newMember.id}`,
+          title: 'Follow Akun Media Sosial Resmi Admin TBK untuk Sinergi',
+          completed: false,
+        });
+      }
+
+      const primaryLink = officialSocials.youtube || officialSocials.instagram || officialSocials.tiktok || '';
+      const formattedMediaLink = primaryLink.startsWith('http')
+        ? primaryLink
+        : primaryLink.startsWith('@')
+        ? `https://instagram.com/${primaryLink.replace('@', '')}`
+        : primaryLink
+        ? `https://youtube.com/@${primaryLink}`
+        : undefined;
+
+      const newMemberTask: Task = {
+        id: `task-mand-${newMember.id}`,
+        title: '📌 [Wajib] Subscribe & Follow Media Sosial Official Admin TBK',
+        description:
+          'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.',
+        isEncrypted: false,
+        status: 'in_progress',
+        priority: 'urgent',
+        creatorId: adminUser?.id || 'user-1',
+        creatorName: adminUser?.name || 'Admin Official TBK',
+        assigneeId: newMember.id,
+        assigneeName: newMember.name,
+        assigneeAvatar: newMember.avatar,
+        dueDate: new Date(Date.now() + 86400000 * 7).toISOString(),
+        category: 'algorithm_growth',
+        tags: ['WajibAdmin', 'OfficialAdmin', 'SinergiTBK', 'MemberBaru'],
+        isOfficialMandatory: true,
+        mediaLink: formattedMediaLink,
+        platform: officialSocials.youtube ? 'youtube' : officialSocials.instagram ? 'instagram' : 'tiktok',
+        subtasks: orientationSubtasks,
+        comments: [
+          {
+            id: `comm-init-${Date.now()}`,
+            userId: adminUser?.id || 'user-1',
+            userName: adminUser?.name || 'Admin TBK',
+            userAvatar: adminUser?.avatar,
+            text: `Selamat datang ${newMember.name}! Silakan selesaikan tugas follow sosmed official kami agar profil Anda diverifikasi penuh.`,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      tasks.unshift(newMemberTask);
+      broadcastEvent('task_created', newMemberTask);
     }
 
-    // Broadcast updated team list to all connected clients (Admin PC & mobile devices)
+    saveDatabase();
+
+    // Broadcast updated team list and tasks to all connected clients
     broadcastEvent('team_updated', teamMembers);
 
     res.status(201).json({
       success: true,
       member: newMember,
       teamMembers,
+      tasks,
+    });
+  });
+
+  // POST Quick Verify Member Orientation Task by Admin
+  app.post('/api/admin/verify-member/:id', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const member = teamMembers.find((m) => m.id === id);
+    if (!member) {
+      return res.status(404).json({ success: false, message: 'Member tidak ditemukan' });
+    }
+
+    // Find member's mandatory tasks
+    const memberTasks = tasks.filter(
+      (t) => (t.assigneeId === id || t.buddyId === id) && (t.isOfficialMandatory || t.tags?.includes('WajibAdmin'))
+    );
+
+    memberTasks.forEach((t) => {
+      t.status = 'done';
+      t.completedAt = new Date().toISOString();
+      t.subtasks = t.subtasks.map((s) => ({ ...s, completed: true }));
+      t.updatedAt = new Date().toISOString();
+      broadcastEvent('task_updated', t);
+    });
+
+    member.completedTasksCount = (member.completedTasksCount || 0) + memberTasks.length;
+    member.xp = (member.xp || 350) + 200;
+    saveDatabase();
+
+    broadcastEvent('team_updated', teamMembers);
+
+    const verifiedNotif: NotificationItem = {
+      id: `notif-verify-${Date.now()}`,
+      title: '✅ Verifikasi Sinergi Sosmed Disetujui!',
+      message: `Akun ${member.name} telah diverifikasi oleh Admin telah mem-follow akun resmi TBK.`,
+      type: 'task_done',
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    notifications.unshift(verifiedNotif);
+    broadcastEvent('notification_added', verifiedNotif);
+
+    res.json({
+      success: true,
+      message: `Member ${member.name} berhasil diverifikasi!`,
+      member,
+      tasks,
     });
   });
 
@@ -822,8 +1042,158 @@ async function startServer() {
       ...updates,
     };
 
+    saveDatabase();
     broadcastEvent('team_updated', teamMembers);
     res.json({ success: true, member: teamMembers[memberIndex], teamMembers });
+  });
+
+  // GET & POST Official Admin Social Media & Mandatory Task
+  app.get('/api/admin/official-socials', (req: Request, res: Response) => {
+    const adminUser = teamMembers.find((m) => m.userType === 'admin') || teamMembers[0];
+    const mandatoryTask = tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
+    res.json({
+      success: true,
+      socialAccounts: adminUser?.socialAccounts || {},
+      mandatoryTask: mandatoryTask || null,
+      hasMandatoryTask: !!mandatoryTask,
+    });
+  });
+
+  app.post('/api/admin/official-socials', (req: Request, res: Response) => {
+    const { socialAccounts, enableMandatoryTask, customInstructions } = req.body;
+
+    // Update admin user social accounts
+    teamMembers.forEach((m) => {
+      if (m.userType === 'admin' || m.id === 'user-1') {
+        m.socialAccounts = {
+          ...m.socialAccounts,
+          ...socialAccounts,
+        };
+      }
+    });
+
+    let mandatoryTask = tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
+
+    if (enableMandatoryTask) {
+      const subtasks: Subtask[] = [];
+      if (socialAccounts?.youtube) {
+        subtasks.push({
+          id: `sub-yt-${Date.now()}`,
+          title: `Subscribe & Tonton YouTube Official Admin: ${socialAccounts.youtube}`,
+          completed: false,
+        });
+      }
+      if (socialAccounts?.instagram) {
+        subtasks.push({
+          id: `sub-ig-${Date.now()}`,
+          title: `Follow Instagram Official Admin: ${socialAccounts.instagram}`,
+          completed: false,
+        });
+      }
+      if (socialAccounts?.tiktok) {
+        subtasks.push({
+          id: `sub-tt-${Date.now()}`,
+          title: `Follow TikTok Official Admin: ${socialAccounts.tiktok}`,
+          completed: false,
+        });
+      }
+      if (socialAccounts?.facebook) {
+        subtasks.push({
+          id: `sub-fb-${Date.now()}`,
+          title: `Follow Facebook / Media Lain Admin: ${socialAccounts.facebook}`,
+          completed: false,
+        });
+      }
+      if (subtasks.length === 0) {
+        subtasks.push({
+          id: `sub-gen-${Date.now()}`,
+          title: 'Follow Akun Media Sosial Resmi Admin TBK',
+          completed: false,
+        });
+      }
+
+      const primaryLink = socialAccounts?.youtube || socialAccounts?.instagram || socialAccounts?.tiktok || '';
+      const formattedMediaLink = primaryLink.startsWith('http')
+        ? primaryLink
+        : primaryLink.startsWith('@')
+        ? `https://instagram.com/${primaryLink.replace('@', '')}`
+        : primaryLink
+        ? `https://youtube.com/@${primaryLink}`
+        : undefined;
+
+      if (mandatoryTask) {
+        mandatoryTask.title = '📌 [Wajib] Subscribe & Follow Media Sosial Official Admin TBK';
+        mandatoryTask.description =
+          customInstructions ||
+          'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.';
+        mandatoryTask.isOfficialMandatory = true;
+        mandatoryTask.mediaLink = formattedMediaLink;
+        mandatoryTask.subtasks = subtasks;
+        mandatoryTask.updatedAt = new Date().toISOString();
+        broadcastEvent('task_updated', mandatoryTask);
+      } else {
+        const newTask: Task = {
+          id: `task-mandatory-${Date.now()}`,
+          title: '📌 [Wajib] Subscribe & Follow Media Sosial Official Admin TBK',
+          description:
+            customInstructions ||
+            'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.',
+          isEncrypted: false,
+          status: 'todo',
+          priority: 'urgent',
+          creatorId: 'user-1',
+          creatorName: 'Admin Official TBK',
+          assigneeId: 'user-1',
+          assigneeName: 'Semua Member Baru',
+          dueDate: new Date(Date.now() + 86400000 * 7).toISOString(),
+          category: 'algorithm_growth',
+          tags: ['WajibAdmin', 'OfficialAdmin', 'SinergiTBK'],
+          isOfficialMandatory: true,
+          mediaLink: formattedMediaLink,
+          platform: socialAccounts?.youtube ? 'youtube' : socialAccounts?.instagram ? 'instagram' : 'tiktok',
+          subtasks,
+          comments: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        tasks.unshift(newTask);
+        mandatoryTask = newTask;
+        broadcastEvent('task_created', newTask);
+      }
+
+      // Also propagate updated links & subtasks to all user-specific mandatory tasks
+      tasks.forEach((t) => {
+        if (t.isOfficialMandatory && t.id !== mandatoryTask?.id) {
+          t.mediaLink = formattedMediaLink;
+          t.subtasks = subtasks.map((s) => {
+            const existingSub = t.subtasks.find((old) => old.title.includes(s.title.substring(0, 10)));
+            return {
+              id: `${s.id}-${t.assigneeId}`,
+              title: s.title,
+              completed: existingSub ? existingSub.completed : false,
+            };
+          });
+          t.updatedAt = new Date().toISOString();
+          broadcastEvent('task_updated', t);
+        }
+      });
+    } else {
+      if (mandatoryTask) {
+        tasks = tasks.filter((t) => t.id !== mandatoryTask!.id);
+        broadcastEvent('task_deleted', { id: mandatoryTask.id });
+        mandatoryTask = undefined;
+      }
+    }
+
+    saveDatabase();
+    broadcastEvent('team_updated', teamMembers);
+
+    res.json({
+      success: true,
+      message: 'Pengaturan media sosial resmi Admin berhasil disimpan & disinkronkan!',
+      socialAccounts,
+      mandatoryTask,
+    });
   });
 
   // GET Notifications

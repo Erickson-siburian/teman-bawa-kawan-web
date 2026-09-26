@@ -31,6 +31,7 @@ interface NavbarProps {
   allMembers: TeamMember[];
   onSwitchUser: (user: TeamMember) => void;
   onSimulatePeerAction: () => void;
+  onOpenAdminSocialsModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -46,6 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   allMembers,
   onSwitchUser,
   onSimulatePeerAction,
+  onOpenAdminSocialsModal,
 }) => {
   const [showNotifs, setShowNotifs] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);

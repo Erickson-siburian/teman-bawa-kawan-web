@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -31,7 +31,9 @@ interface AdminProgressMonitorProps {
   onSelectTask?: (task: Task) => void;
   onUpdateTaskStatus?: (taskId: string, newStatus: TaskStatus) => void;
   onOpenNewTaskModal?: () => void;
-  onUpdateAdminOfficialSosmed?: (socials: MemberSocialAccounts, createMandatoryTask: boolean) => void;
+  onUpdateAdminOfficialSosmed?: (socials: MemberSocialAccounts, createMandatoryTask: boolean) => Promise<void> | void;
+  onOpenAdminSocialsModal?: () => void;
+  onVerifyMember?: (memberId: string) => Promise<void> | void;
   onDeleteTask?: (taskId: string) => void;
 }
 
@@ -43,11 +45,14 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
   onUpdateTaskStatus,
   onOpenNewTaskModal,
   onUpdateAdminOfficialSosmed,
+  onOpenAdminSocialsModal,
+  onVerifyMember,
   onDeleteTask,
 }) => {
-  const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'in_progress' | 'unassigned'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'new_members' | 'completed' | 'in_progress' | 'unassigned'>('all');
   const [searchMember, setSearchMember] = useState('');
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [verifyingMemberId, setVerifyingMemberId] = useState<string | null>(null);
 
   // Official Admin Sosmed settings state
   const [showSosmedSettings, setShowSosmedSettings] = useState(false);
@@ -57,10 +62,31 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
   const [officialFacebook, setOfficialFacebook] = useState(currentUser.socialAccounts?.facebook || '');
   const [sosmedSavedMessage, setSosmedSavedMessage] = useState('');
 
+  // Keep state in sync with currentUser.socialAccounts
+  useEffect(() => {
+    if (currentUser.socialAccounts) {
+      setOfficialYoutube(currentUser.socialAccounts.youtube || '');
+      setOfficialInstagram(currentUser.socialAccounts.instagram || '');
+      setOfficialTiktok(currentUser.socialAccounts.tiktok || '');
+      setOfficialFacebook(currentUser.socialAccounts.facebook || '');
+    }
+  }, [currentUser.socialAccounts]);
+
   // Check if mandatory onboarding task exists
   const mandatoryTask = useMemo(() => {
     return tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
   }, [tasks]);
+
+  // Helper: check if a member is newly registered
+  const isMemberNew = (member: TeamMember) => {
+    if (member.userType === 'admin') return false;
+    if (member.id.startsWith('member-')) return true;
+    if (!member.joinedAt) return true;
+    const diffDays = (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays <= 7 || (member.level === 1 && member.completedTasksCount === 0);
+  };
+
+  const newMembersCount = teamMembers.filter(isMemberNew).length;
 
   // Overall Task Aggregates
   const totalTasks = tasks.length;
@@ -97,6 +123,8 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
         }
       }
 
+      const isNew = isMemberNew(member);
+
       return {
         member,
         total,
@@ -104,6 +132,7 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
         ongoing: ongoingTasks.length,
         progressPercent,
         stateLabel,
+        isNew,
         assignedTasks,
         doneTasks,
         ongoingTasks,
@@ -134,7 +163,9 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
         (item.member.occupation && item.member.occupation.toLowerCase().includes(searchMember.toLowerCase()));
 
       let matchesCategory = true;
-      if (filterStatus === 'completed') {
+      if (filterStatus === 'new_members') {
+        matchesCategory = item.isNew;
+      } else if (filterStatus === 'completed') {
         matchesCategory = item.stateLabel === 'completed_all';
       } else if (filterStatus === 'in_progress') {
         matchesCategory = item.stateLabel === 'in_progress';
@@ -171,33 +202,85 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
 
           {/* Quick Action Button */}
           <div className="flex flex-wrap items-center gap-3">
+            {onOpenAdminSocialsModal && (
+              <button
+                type="button"
+                onClick={onOpenAdminSocialsModal}
+                className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center gap-2"
+                title="Buka dialog pengaturan link YouTube, IG, TikTok resmi yang wajib difollow member baru"
+              >
+                <Sparkles className="w-4 h-4 text-slate-950" />
+                <span>Atur Link Medsos Wajib Member</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setShowSosmedSettings(!showSosmedSettings)}
               className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm border border-white/20 transition-all cursor-pointer flex items-center gap-2"
             >
               <Settings className="w-4 h-4 text-amber-300" />
-              <span>{showSosmedSettings ? 'Tutup Pengaturan Medsos' : 'Atur Medsos Resmi Admin'}</span>
+              <span>{showSosmedSettings ? 'Tutup Panel Medsos' : 'Form Medsos Admin'}</span>
             </button>
 
             {onOpenNewTaskModal && (
               <button
                 type="button"
                 onClick={onOpenNewTaskModal}
-                className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-400/20 transition-all cursor-pointer flex items-center gap-2"
+                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-indigo-500/20 transition-all cursor-pointer flex items-center gap-2"
               >
-                <span>+ Buat &amp; Tugaskan Konten Baru</span>
+                <span>+ Buat &amp; Tugaskan Konten</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Aggregate Progress Bar */}
-        <div className="mt-6 pt-6 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Aggregate Progress Bar & Member Counters */}
+        <div className="mt-6 pt-6 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {/* Total Members */}
+          <div className="bg-white/10 backdrop-blur-xs p-3.5 rounded-2xl border border-white/15">
+            <p className="text-xs text-amber-200 font-bold flex items-center justify-between">
+              <span>Total Member</span>
+              {newMembersCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black animate-pulse">
+                  +{newMembersCount} Baru
+                </span>
+              )}
+            </p>
+            <p className="text-2xl font-black text-white mt-0.5">{teamMembers.length} Anggota</p>
+            <p className="text-[10px] text-amber-100/80 mt-1">
+              {newMembersCount} member baru dalam antrean
+            </p>
+          </div>
+
           <div className="bg-white/5 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10">
-            <p className="text-xs text-indigo-200 font-medium">Total Tugas Komunitas</p>
+            <p className="text-xs text-emerald-200 font-medium">Member Tuntas (100%)</p>
+            <p className="text-2xl font-black text-emerald-300 mt-0.5">{membersWithCompletedTasks} Member</p>
+            <p className="text-[10px] text-emerald-200/70 mt-1">
+              Seluruh tugas orientasi &amp; konten selesai
+            </p>
+          </div>
+
+          <div className="bg-white/5 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10">
+            <p className="text-xs text-amber-200 font-medium">Sedang Berproses</p>
+            <p className="text-2xl font-black text-amber-300 mt-0.5">{membersInProgress} Member</p>
+            <p className="text-[10px] text-amber-200/70 mt-1">
+              Orientasi sosmed atau tugas aktif
+            </p>
+          </div>
+
+          <div className="bg-white/5 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10">
+            <p className="text-xs text-slate-300 font-medium">Belum Ada Tugas</p>
+            <p className="text-2xl font-black text-slate-200 mt-0.5">{membersWithoutTasks} Member</p>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Siap untuk didelegasikan
+            </p>
+          </div>
+
+          <div className="bg-white/5 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10">
+            <p className="text-xs text-indigo-200 font-medium">Tugas Komunitas</p>
             <p className="text-2xl font-black text-white mt-0.5">{totalTasks} Tugas</p>
-            <div className="w-full bg-white/10 rounded-full h-2 mt-2 overflow-hidden">
+            <div className="w-full bg-white/10 rounded-full h-1.5 mt-2 overflow-hidden">
               <div
                 className="bg-emerald-400 h-full rounded-full transition-all duration-500"
                 style={{ width: `${overallCompletionPercentage}%` }}
@@ -205,30 +288,6 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
             </div>
             <p className="text-[10px] text-emerald-300 font-semibold mt-1">
               {overallCompletionPercentage}% tugas terselesaikan
-            </p>
-          </div>
-
-          <div className="bg-white/5 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10">
-            <p className="text-xs text-emerald-200 font-medium">Member Tuntas Tugas (100%)</p>
-            <p className="text-2xl font-black text-emerald-300 mt-0.5">{membersWithCompletedTasks} Member</p>
-            <p className="text-[10px] text-emerald-200/70 mt-1">
-              Seluruh tugas yang diberikan telah selesai
-            </p>
-          </div>
-
-          <div className="bg-white/5 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10">
-            <p className="text-xs text-amber-200 font-medium">Member Sedang Berproses</p>
-            <p className="text-2xl font-black text-amber-300 mt-0.5">{membersInProgress} Member</p>
-            <p className="text-[10px] text-amber-200/70 mt-1">
-              Memiliki tugas todo / proses / review
-            </p>
-          </div>
-
-          <div className="bg-white/5 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10">
-            <p className="text-xs text-slate-300 font-medium">Belum Menerima Tugas</p>
-            <p className="text-2xl font-black text-slate-200 mt-0.5">{membersWithoutTasks} Member</p>
-            <p className="text-[10px] text-slate-400 mt-1">
-              Siap untuk didelegasikan tugas baru
             </p>
           </div>
         </div>
@@ -425,6 +484,19 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
 
             <button
               type="button"
+              onClick={() => setFilterStatus('new_members')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                filterStatus === 'new_members'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Member Baru ({newMembersCount})</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setFilterStatus('completed')}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 filterStatus === 'completed'
@@ -512,23 +584,49 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
                           <img
                             src={m.avatar}
                             alt={m.name}
-                            className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
+                            className="w-10 h-10 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
                             referrerPolicy="no-referrer"
                           />
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="font-bold text-slate-900 truncate">{m.name}</p>
-                              {m.userType === 'admin' && (
+                              {m.userType === 'admin' ? (
                                 <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-black border border-amber-300">
                                   ADMIN
                                 </span>
-                              )}
+                              ) : item.isNew ? (
+                                <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black border border-emerald-300 flex items-center gap-0.5">
+                                  <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
+                                  <span>MEMBER BARU</span>
+                                </span>
+                              ) : null}
                             </div>
                             <p className="text-[11px] text-slate-500 font-mono truncate">{m.email}</p>
                             {m.phoneNumber && (
                               <p className="text-[10px] text-emerald-700 font-mono truncate">
                                 📞 {m.phoneNumber}
                               </p>
+                            )}
+
+                            {/* Registered Social Media Handles */}
+                            {m.socialAccounts && (
+                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                {m.socialAccounts.instagram && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-pink-50 text-pink-700 font-medium border border-pink-200">
+                                    IG: {m.socialAccounts.instagram}
+                                  </span>
+                                )}
+                                {m.socialAccounts.youtube && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-50 text-red-700 font-medium border border-red-200">
+                                    YT: {m.socialAccounts.youtube}
+                                  </span>
+                                )}
+                                {m.socialAccounts.tiktok && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-medium border border-slate-200">
+                                    TT: {m.socialAccounts.tiktok}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -543,10 +641,17 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
                           </span>
                         )}
                         {isProcessing && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold border border-amber-300">
-                            <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                            <span>Sedang Berjalan ({item.ongoing})</span>
-                          </span>
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold border border-amber-300">
+                              <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                              <span>Sedang Berjalan ({item.ongoing})</span>
+                            </span>
+                            {item.assignedTasks.some((t) => t.isOfficialMandatory) && (
+                              <span className="text-[10px] text-amber-800 font-bold block flex items-center gap-1">
+                                <span>📌 Wajib Sosmed Admin</span>
+                              </span>
+                            )}
+                          </div>
                         )}
                         {isUnassigned && (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200">
@@ -621,13 +726,34 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
 
                       {/* Admin Actions */}
                       <td className="py-3.5 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedMemberId(m.id)}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold transition-colors cursor-pointer whitespace-nowrap"
-                        >
-                          Lihat Detail Tugas →
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {onVerifyMember && item.ongoing > 0 && (
+                            <button
+                              type="button"
+                              disabled={verifyingMemberId === m.id}
+                              onClick={async () => {
+                                setVerifyingMemberId(m.id);
+                                try {
+                                  await onVerifyMember(m.id);
+                                } finally {
+                                  setVerifyingMemberId(null);
+                                }
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                              title="Verifikasi bahwa member ini sudah follow/subscribe akun sosmed Admin"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>{verifyingMemberId === m.id ? 'Memproses...' : 'Verifikasi Tuntas'}</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedMemberId(m.id)}
+                            className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold transition-colors cursor-pointer whitespace-nowrap"
+                          >
+                            Lihat Detail →
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -690,6 +816,68 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
                 <p className="text-lg font-black text-amber-700">{activeSelectedMemberStat.ongoing}</p>
               </div>
             </div>
+
+            {/* Member's Registered Social Accounts Box */}
+            {activeSelectedMemberStat.member.socialAccounts && (
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 mb-4 space-y-2">
+                <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Akun Media Sosial Member yang Didaftarkan:</span>
+                </span>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {activeSelectedMemberStat.member.socialAccounts.instagram && (
+                    <a
+                      href={activeSelectedMemberStat.member.socialAccounts.instagram.startsWith('http')
+                        ? activeSelectedMemberStat.member.socialAccounts.instagram
+                        : `https://instagram.com/${activeSelectedMemberStat.member.socialAccounts.instagram.replace('@', '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg bg-pink-100 text-pink-800 font-medium hover:bg-pink-200 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>📷 IG: {activeSelectedMemberStat.member.socialAccounts.instagram}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  {activeSelectedMemberStat.member.socialAccounts.youtube && (
+                    <a
+                      href={activeSelectedMemberStat.member.socialAccounts.youtube.startsWith('http')
+                        ? activeSelectedMemberStat.member.socialAccounts.youtube
+                        : `https://youtube.com/@${activeSelectedMemberStat.member.socialAccounts.youtube}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg bg-red-100 text-red-800 font-medium hover:bg-red-200 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>▶ YT: {activeSelectedMemberStat.member.socialAccounts.youtube}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  {activeSelectedMemberStat.member.socialAccounts.tiktok && (
+                    <a
+                      href={activeSelectedMemberStat.member.socialAccounts.tiktok.startsWith('http')
+                        ? activeSelectedMemberStat.member.socialAccounts.tiktok
+                        : `https://tiktok.com/@${activeSelectedMemberStat.member.socialAccounts.tiktok.replace('@', '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-800 font-medium hover:bg-slate-300 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>♪ TT: {activeSelectedMemberStat.member.socialAccounts.tiktok}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  {activeSelectedMemberStat.member.phoneNumber && (
+                    <a
+                      href={`https://wa.me/${activeSelectedMemberStat.member.phoneNumber.replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-medium hover:bg-emerald-200 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>💬 WhatsApp: {activeSelectedMemberStat.member.phoneNumber}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* List of Tasks */}
             <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">

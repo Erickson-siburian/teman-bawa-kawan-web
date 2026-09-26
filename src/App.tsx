@@ -10,6 +10,7 @@ import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { AdminProgressMonitor } from './components/AdminProgressMonitor';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AuthRegistrationModal } from './components/AuthRegistrationModal';
+import { AdminOfficialSocialsModal } from './components/AdminOfficialSocialsModal';
 import { NotificationItem, ReferralRecord, Task, TaskStatus, TeamMember, MemberSocialAccounts } from './types';
 import { syncManager } from './lib/syncManager';
 import { playTaskDoneChime, playLevelUpFanfare, playNotificationTone } from './lib/audio';
@@ -25,6 +26,13 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('register');
+  const [isAdminSocialsModalOpen, setIsAdminSocialsModalOpen] = useState(false);
+  const [officialAdminSocials, setOfficialAdminSocials] = useState<MemberSocialAccounts>({
+    instagram: '@adrian_andrew.id',
+    youtube: 'https://youtube.com/@adrian_andrew.id',
+    tiktok: '@adrianandrew_tiktok',
+    facebook: 'Adrian Andrew ID',
+  });
 
   const [currentUser, setCurrentUser] = useState<TeamMember>({
     id: 'user-1',
@@ -110,11 +118,12 @@ export default function App() {
     // If online, attempt to fetch fresh data from server
     if (syncManager.isOnline()) {
       try {
-        const [tasksRes, teamRes, notifRes, refRes] = await Promise.all([
-          fetch('/api/tasks').then((r) => r.json()),
-          fetch('/api/team').then((r) => r.json()),
-          fetch('/api/notifications').then((r) => r.json()),
-          fetch('/api/referrals').then((r) => r.json()),
+        const [tasksRes, teamRes, notifRes, refRes, officialRes] = await Promise.all([
+          fetch('/api/tasks').then((r) => r.json()).catch(() => null),
+          fetch('/api/team').then((r) => r.json()).catch(() => null),
+          fetch('/api/notifications').then((r) => r.json()).catch(() => null),
+          fetch('/api/referrals').then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/official-socials').then((r) => r.json()).catch(() => null),
         ]);
 
         if (tasksRes && tasksRes.success) {
@@ -133,6 +142,9 @@ export default function App() {
         }
         if (refRes && refRes.success) {
           setReferrals(refRes.referrals);
+        }
+        if (officialRes && officialRes.success && officialRes.socialAccounts) {
+          setOfficialAdminSocials(officialRes.socialAccounts);
         }
       } catch (err) {
         console.warn('Backend API tidak tersambung (mode static/offline Vercel), menggunakan penyimpanan lokal.', err);
@@ -546,6 +558,8 @@ export default function App() {
     socialAccounts: MemberSocialAccounts,
     createMandatoryTask: boolean
   ) => {
+    setOfficialAdminSocials(socialAccounts);
+
     const updatedUser: TeamMember = {
       ...currentUser,
       socialAccounts,
@@ -556,91 +570,66 @@ export default function App() {
       teamMembers.map((m) => (m.id === currentUser.id ? updatedUser : m))
     );
 
-    // Save to server
-    try {
-      await fetch(`/api/team/${currentUser.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ socialAccounts }),
-      });
-    } catch (e) {
-      console.warn('Gagal simpan sosmed admin ke server:', e);
+    // Save to central server official socials endpoint
+    if (syncManager.isOnline()) {
+      try {
+        const res = await fetch('/api/admin/official-socials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            socialAccounts,
+            enableMandatoryTask: createMandatoryTask,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          // Fetch updated tasks and team to sync state
+          const [tasksRes, teamRes] = await Promise.all([
+            fetch('/api/tasks').then((r) => r.json()).catch(() => null),
+            fetch('/api/team').then((r) => r.json()).catch(() => null),
+          ]);
+          if (tasksRes && tasksRes.success) {
+            setTasks(tasksRes.tasks);
+            syncManager.setCachedTasks(tasksRes.tasks);
+          }
+          if (teamRes && teamRes.success) {
+            setTeamMembers(teamRes.teamMembers);
+            syncManager.setCachedTeam(teamRes.teamMembers);
+          }
+        }
+      } catch (e) {
+        console.warn('Gagal simpan sosmed admin ke server:', e);
+      }
     }
+  };
 
-    // If createMandatoryTask is true, create or update the task
-    if (createMandatoryTask) {
-      const existingTask = tasks.find(
-        (t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin')
-      );
-      const subtasks = [];
-      if (socialAccounts.youtube) {
-        subtasks.push({
-          id: `sub-yt-${Date.now()}`,
-          title: `Subscribe YouTube Official Admin: ${socialAccounts.youtube}`,
-          completed: false,
+  // Quick Verify Member by Admin
+  const handleVerifyMember = async (memberId: string) => {
+    try {
+      const res = await fetch(`/api/admin/verify-member/${memberId}`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.member) {
+          setTeamMembers((prev) => prev.map((m) => (m.id === memberId ? data.member : m)));
+          syncManager.setCachedTeam(
+            teamMembers.map((m) => (m.id === memberId ? data.member : m))
+          );
+        }
+        if (data.tasks) {
+          setTasks(data.tasks);
+          syncManager.setCachedTasks(data.tasks);
+        }
+        playTaskDoneChime();
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 },
         });
       }
-      if (socialAccounts.instagram) {
-        subtasks.push({
-          id: `sub-ig-${Date.now()}`,
-          title: `Follow Instagram Official Admin: ${socialAccounts.instagram}`,
-          completed: false,
-        });
-      }
-      if (socialAccounts.tiktok) {
-        subtasks.push({
-          id: `sub-tt-${Date.now()}`,
-          title: `Follow TikTok Official Admin: ${socialAccounts.tiktok}`,
-          completed: false,
-        });
-      }
-      if (socialAccounts.facebook) {
-        subtasks.push({
-          id: `sub-fb-${Date.now()}`,
-          title: `Ikuti Facebook / Media Lain Admin: ${socialAccounts.facebook}`,
-          completed: false,
-        });
-      }
-      if (subtasks.length === 0) {
-        subtasks.push({
-          id: `sub-gen-${Date.now()}`,
-          title: 'Ikuti & Pantau Informasi Resmi Admin TBK',
-          completed: false,
-        });
-      }
-
-      if (existingTask) {
-        const updatedTask: Task = {
-          ...existingTask,
-          title: '📌 [Wajib] Subscribe & Follow Media Sosial Official Admin TBK',
-          description:
-            'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.',
-          mediaLink: socialAccounts.youtube?.startsWith('http')
-            ? socialAccounts.youtube
-            : socialAccounts.instagram
-            ? `https://instagram.com/${socialAccounts.instagram.replace('@', '')}`
-            : undefined,
-          subtasks,
-          updatedAt: new Date().toISOString(),
-        };
-        handleUpdateTask(updatedTask);
-      } else {
-        handleCreateTask({
-          title: '📌 [Wajib] Subscribe & Follow Media Sosial Official Admin TBK',
-          description:
-            'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.',
-          priority: 'urgent',
-          category: 'algorithm_growth',
-          tags: ['WajibAdmin', 'OfficialAdmin', 'SinergiTBK'],
-          isOfficialMandatory: true,
-          mediaLink: socialAccounts.youtube?.startsWith('http')
-            ? socialAccounts.youtube
-            : socialAccounts.instagram
-            ? `https://instagram.com/${socialAccounts.instagram.replace('@', '')}`
-            : undefined,
-          subtasks,
-        });
-      }
+    } catch (e) {
+      console.warn('Gagal verifikasi member:', e);
     }
   };
 
@@ -743,6 +732,10 @@ export default function App() {
           setTeamMembers(data.teamMembers);
           syncManager.setCachedTeam(data.teamMembers);
         }
+        if (data.tasks) {
+          setTasks(data.tasks);
+          syncManager.setCachedTasks(data.tasks);
+        }
       }
     } catch (err) {
       console.warn('Sinkronisasi pendaftaran ke server disimpan secara lokal:', err);
@@ -801,6 +794,19 @@ export default function App() {
           initialMode={authModalMode}
           onAuthSuccess={handleAuthSuccess}
           existingMembers={teamMembers}
+          officialSocials={officialAdminSocials}
+        />
+
+        <AdminOfficialSocialsModal
+          isOpen={isAdminSocialsModalOpen}
+          onClose={() => setIsAdminSocialsModalOpen(false)}
+          currentSocials={officialAdminSocials}
+          mandatoryTask={tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'))}
+          onSave={(socials, enableMandatory) => handleUpdateAdminOfficialSosmed(socials, enableMandatory)}
+          onDeleteMandatoryTask={() => {
+            const mTask = tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
+            if (mTask) handleDeleteTask(mTask.id);
+          }}
         />
 
         <OfflineIndicator
@@ -834,6 +840,7 @@ export default function App() {
           setTaskModalInitialStatus('todo');
           setIsTaskModalOpen(true);
         }}
+        onOpenAdminSocialsModal={() => setIsAdminSocialsModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -884,6 +891,8 @@ export default function App() {
               setIsTaskModalOpen(true);
             }}
             onUpdateAdminOfficialSosmed={handleUpdateAdminOfficialSosmed}
+            onOpenAdminSocialsModal={() => setIsAdminSocialsModalOpen(true)}
+            onVerifyMember={handleVerifyMember}
             onDeleteTask={handleDeleteTask}
           />
         )}
@@ -896,6 +905,19 @@ export default function App() {
         initialMode={authModalMode}
         onAuthSuccess={handleAuthSuccess}
         existingMembers={teamMembers}
+        officialSocials={officialAdminSocials}
+      />
+
+      <AdminOfficialSocialsModal
+        isOpen={isAdminSocialsModalOpen}
+        onClose={() => setIsAdminSocialsModalOpen(false)}
+        currentSocials={officialAdminSocials}
+        mandatoryTask={tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'))}
+        onSave={(socials, enableMandatory) => handleUpdateAdminOfficialSosmed(socials, enableMandatory)}
+        onDeleteMandatoryTask={() => {
+          const mTask = tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
+          if (mTask) handleDeleteTask(mTask.id);
+        }}
       />
       <TaskModal
         isOpen={isTaskModalOpen}

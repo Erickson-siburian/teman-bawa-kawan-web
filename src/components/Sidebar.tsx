@@ -37,6 +37,7 @@ interface SidebarProps {
   onSwitchUser: (user: TeamMember) => void;
   onSimulatePeerAction: () => void;
   onOpenNewTaskModal?: () => void;
+  onOpenAdminSocialsModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -53,12 +54,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSwitchUser,
   onSimulatePeerAction,
   onOpenNewTaskModal,
+  onOpenAdminSocialsModal,
 }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const unreadNotifs = notifications.filter((n) => !n.read);
+  const adminMember = allMembers.find((m) => m.userType === 'admin') || allMembers[0];
 
   const navItems: Array<{
     id: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor';
@@ -146,6 +149,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Plus className="w-4 h-4" />
             <span>Tugas Kolaborasi Baru</span>
+          </button>
+        )}
+
+        {/* Quick Admin Official Socials Button */}
+        {currentUser.userType === 'admin' && onOpenAdminSocialsModal && (
+          <button
+            onClick={() => {
+              onOpenAdminSocialsModal();
+              setMobileOpen(false);
+            }}
+            className="mt-2 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs transition-all cursor-pointer shadow-2xs"
+            title="Atur link akun YouTube, Instagram, TikTok resmi yang wajib disubscribe & difollow member baru"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>Atur Medsos Wajib Member</span>
           </button>
         )}
       </div>
@@ -410,11 +428,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   ))}
                 </>
               ) : (
-                <div className="p-2.5 bg-slate-50 rounded-lg text-center space-y-1">
-                  <p className="text-xs font-bold text-slate-700">Akun Member Terverifikasi</p>
-                  <p className="text-[11px] text-slate-500 leading-tight">
-                    Privasi Anda terjaga. Akses administrasi dan ganti akun dibatasi hanya untuk administrator resmi.
-                  </p>
+                <div className="p-2.5 bg-slate-50 rounded-lg text-center space-y-2">
+                  <div>
+                    <p className="text-xs font-bold text-slate-700">Akun Member Terverifikasi</p>
+                    <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
+                      Anda sedang login sebagai anggota. Ingin kembali ke akun Admin untuk memantau status pendaftaran?
+                    </p>
+                  </div>
+                  {adminMember && (
+                    <button
+                      onClick={() => {
+                        onSwitchUser(adminMember);
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full py-2 px-3 rounded-lg bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-slate-950" />
+                      <span>Kembali ke Akun Admin ({adminMember.name})</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
