@@ -24,7 +24,7 @@ interface AuthRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMode?: 'login' | 'register';
-  onAuthSuccess: (member: TeamMember) => void;
+  onAuthSuccess: (member: TeamMember, isRegistration?: boolean) => void;
   existingMembers: TeamMember[];
   officialSocials?: MemberSocialAccounts;
 }
@@ -141,13 +141,13 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     }
 
     setRegSuccess(true);
-    await onAuthSuccess(newMember);
+    await onAuthSuccess(newMember, true);
 
     setTimeout(() => {
       setIsSubmitting(false);
       setRegSuccess(false);
       onClose();
-    }, 1200);
+    }, 800);
   };
 
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -172,7 +172,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
         setErrorMessage('Password yang Anda masukkan salah. Silakan coba lagi.');
         return;
       }
-      onAuthSuccess(matched);
+      onAuthSuccess(matched, false);
       onClose();
     } else {
       setErrorMessage('User ID (Nama, Email, atau No. HP) tidak ditemukan dalam database member.');
@@ -180,7 +180,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   };
 
   const handleQuickLoginAs = (member: TeamMember) => {
-    onAuthSuccess(member);
+    onAuthSuccess(member, false);
     onClose();
   };
 
@@ -260,143 +260,6 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
              ========================================================================= */
           <form onSubmit={handleRegisterSubmit} className="max-h-[80vh] overflow-y-auto">
             <div className="p-5 sm:p-7 space-y-6">
-              {/* Official Admin Socials Card: Channels required to subscribe & follow */}
-              <div className="border-2 border-amber-300 rounded-2xl overflow-hidden bg-linear-to-r from-amber-50/95 via-amber-100/50 to-orange-50/80 shadow-xs p-4 sm:p-5 space-y-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-xs shrink-0">
-                    <Sparkles className="w-4 h-4 text-slate-950" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-slate-900 text-sm leading-tight">
-                      Media Sosial Resmi Admin TBK (Wajib Di-Subscribe &amp; Di-Follow)
-                    </h3>
-                    <p className="text-[11px] text-amber-900 font-medium mt-0.5">
-                      Sinergi saling support calon anggota: silakan subscribe channel YouTube dan follow akun resmi Admin untuk verifikasi keanggotaan.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  {/* YouTube Admin */}
-                  <div className="p-3 rounded-xl bg-white border border-amber-200/80 flex items-center justify-between gap-2 shadow-2xs">
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-black uppercase text-red-600 tracking-wider block">▶ YouTube Official</span>
-                      <p className="text-xs font-bold text-slate-800 truncate">
-                        {officialSocials?.youtube || '@adrian_andrew.official'}
-                      </p>
-                    </div>
-                    {officialSocials?.youtube ? (
-                      <a
-                        href={officialSocials.youtube.startsWith('http') ? officialSocials.youtube : `https://youtube.com/@${officialSocials.youtube.replace('@', '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shrink-0 transition-colors flex items-center gap-1 shadow-2xs"
-                      >
-                        <span>Subscribe</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    ) : (
-                      <a
-                        href="https://youtube.com"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shrink-0 transition-colors flex items-center gap-1 shadow-2xs"
-                      >
-                        <span>Subscribe</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                  </div>
-
-                  {/* Instagram Admin */}
-                  <div className="p-3 rounded-xl bg-white border border-amber-200/80 flex items-center justify-between gap-2 shadow-2xs">
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-black uppercase text-pink-600 tracking-wider block">📷 Instagram Official</span>
-                      <p className="text-xs font-bold text-slate-800 truncate">
-                        {officialSocials?.instagram || '@adrian_andrew.id'}
-                      </p>
-                    </div>
-                    {officialSocials?.instagram ? (
-                      <a
-                        href={officialSocials.instagram.startsWith('http') ? officialSocials.instagram : `https://instagram.com/${officialSocials.instagram.replace('@', '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-[11px] font-bold shrink-0 transition-colors flex items-center gap-1 shadow-2xs"
-                      >
-                        <span>Follow IG</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    ) : (
-                      <a
-                        href="https://instagram.com"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-[11px] font-bold shrink-0 transition-colors flex items-center gap-1 shadow-2xs"
-                      >
-                        <span>Follow IG</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                  </div>
-
-                  {/* TikTok Admin (if exists) */}
-                  {officialSocials?.tiktok && (
-                    <div className="p-3 rounded-xl bg-white border border-amber-200/80 flex items-center justify-between gap-2 shadow-2xs">
-                      <div className="min-w-0">
-                        <span className="text-[10px] font-black uppercase text-slate-800 tracking-wider block">♪ TikTok Official</span>
-                        <p className="text-xs font-bold text-slate-800 truncate">
-                          {officialSocials.tiktok}
-                        </p>
-                      </div>
-                      <a
-                        href={officialSocials.tiktok.startsWith('http') ? officialSocials.tiktok : `https://tiktok.com/@${officialSocials.tiktok.replace('@', '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shrink-0 transition-colors flex items-center gap-1 shadow-2xs"
-                      >
-                        <span>Follow TT</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Facebook Admin (if exists) */}
-                  {officialSocials?.facebook && (
-                    <div className="p-3 rounded-xl bg-white border border-amber-200/80 flex items-center justify-between gap-2 shadow-2xs">
-                      <div className="min-w-0">
-                        <span className="text-[10px] font-black uppercase text-blue-600 tracking-wider block">f Facebook Official</span>
-                        <p className="text-xs font-bold text-slate-800 truncate">
-                          {officialSocials.facebook}
-                        </p>
-                      </div>
-                      {officialSocials.facebook.startsWith('http') && (
-                        <a
-                          href={officialSocials.facebook}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shrink-0 transition-colors flex items-center gap-1 shadow-2xs"
-                        >
-                          <span>Buka FB</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <label className="flex items-start gap-2 pt-1 text-xs text-amber-950 font-bold cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={agreedToFollow}
-                    onChange={(e) => setAgreedToFollow(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-amber-300"
-                  />
-                  <span>
-                    Saya bersedia subscribe YouTube &amp; follow media sosial resmi Admin TBK untuk validasi status keanggotaan.
-                  </span>
-                </label>
-              </div>
-
               {/* Section 1: Detail Profil (Header exactly like Screenshot 1) */}
               <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-xs">
                 <div className="bg-slate-100/90 border-b border-slate-200 px-4 py-2.5 font-bold text-slate-800 text-sm">

@@ -11,7 +11,8 @@ import { AdminProgressMonitor } from './components/AdminProgressMonitor';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AuthRegistrationModal } from './components/AuthRegistrationModal';
 import { AdminOfficialSocialsModal } from './components/AdminOfficialSocialsModal';
-import { NotificationItem, ReferralRecord, Task, TaskStatus, TeamMember, MemberSocialAccounts } from './types';
+import { PostRegisterOrientationModal } from './components/PostRegisterOrientationModal';
+import { NotificationItem, ReferralRecord, Task, TaskStatus, TeamMember, MemberSocialAccounts, SocialFollowProof } from './types';
 import { syncManager } from './lib/syncManager';
 import { playTaskDoneChime, playLevelUpFanfare, playNotificationTone } from './lib/audio';
 import { initialTeamMembers, initialTasks, initialNotifications, initialReferrals } from './data/initialData';
@@ -27,6 +28,8 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('register');
   const [isAdminSocialsModalOpen, setIsAdminSocialsModalOpen] = useState(false);
+  const [isOrientationModalOpen, setIsOrientationModalOpen] = useState(false);
+  const [orientationMember, setOrientationMember] = useState<TeamMember | null>(null);
   const [officialAdminSocials, setOfficialAdminSocials] = useState<MemberSocialAccounts>({
     instagram: '@adrian_andrew.id',
     youtube: 'https://youtube.com/@adrian_andrew.id',
@@ -707,7 +710,7 @@ export default function App() {
     }
   };
 
-  const handleAuthSuccess = async (member: TeamMember) => {
+  const handleAuthSuccess = async (member: TeamMember, isRegistration?: boolean) => {
     setCurrentUser(member);
     setIsLoggedIn(true);
 
@@ -751,15 +754,89 @@ export default function App() {
     const notif: NotificationItem = {
       id: `notif-${Date.now()}`,
       title: '🎉 Selamat Datang di Komunitas TBK!',
-      message: `Halo ${member.name}, akun Anda berhasil diverifikasi. Silakan mulai eksplorasi tugas atau hubungkan akun sosmed Anda.`,
+      message: `Halo ${member.name}, akun Anda berhasil dibuat. Silakan selesaikan misi tontonan YouTube minimal 2 menit & follow akun resmi Admin.`,
       type: 'level_up',
       read: false,
       createdAt: new Date().toISOString(),
     };
     setNotifications((prev) => [notif, ...prev]);
 
+    // If it's registration, trigger the post-registration social orientation modal
+    if (isRegistration) {
+      setOrientationMember(member);
+      setIsOrientationModalOpen(true);
+    }
+
     // Navigate to board
     setActiveTab('board');
+  };
+
+  // Complete Orientation Mission (YouTube Watch Time & Follow)
+  const handleCompleteOrientation = async (data: {
+    youtubeWatchedSeconds: number;
+    youtubeConfirmed: boolean;
+    instagramConfirmed: boolean;
+    tiktokConfirmed: boolean;
+    facebookConfirmed: boolean;
+  }) => {
+    const targetMember = orientationMember || currentUser;
+    try {
+      const res = await fetch('/api/member/orientation-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: targetMember.id,
+          ...data,
+        }),
+      });
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData.member) {
+          setTeamMembers((prev) =>
+            prev.map((m) => (m.id === targetMember.id ? resData.member : m))
+          );
+          if (currentUser.id === targetMember.id) {
+            setCurrentUser(resData.member);
+          }
+        }
+        if (resData.tasks) {
+          setTasks(resData.tasks);
+          syncManager.setCachedTasks(resData.tasks);
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal sinkronisasi orientasi ke server:', e);
+      // Local fallback
+      const updatedProof: SocialFollowProof = {
+        youtubeWatchedSeconds: data.youtubeWatchedSeconds,
+        youtubeSubscribed: data.youtubeConfirmed,
+        youtubeWatchProof:
+          data.youtubeWatchedSeconds >= 120
+            ? `Tuntas ${Math.floor(data.youtubeWatchedSeconds / 60)}m ${data.youtubeWatchedSeconds % 60}s (> 2 Menit, Valid Algoritma)`
+            : `${Math.floor(data.youtubeWatchedSeconds / 60)}m ${data.youtubeWatchedSeconds % 60}s`,
+        youtubeVerifiedAt: data.youtubeConfirmed ? new Date().toISOString() : undefined,
+        instagramFollowed: data.instagramConfirmed,
+        tiktokFollowed: data.tiktokConfirmed,
+        facebookFollowed: data.facebookConfirmed,
+        allCompleted: data.youtubeConfirmed && data.instagramConfirmed,
+        completedAt: new Date().toISOString(),
+      };
+      setTeamMembers((prev) =>
+        prev.map((m) =>
+          m.id === targetMember.id ? { ...m, socialFollowProof: updatedProof } : m
+        )
+      );
+      if (currentUser.id === targetMember.id) {
+        setCurrentUser((prev) => ({ ...prev, socialFollowProof: updatedProof }));
+      }
+    }
+
+    playTaskDoneChime();
+    confetti({
+      particleCount: 120,
+      spread: 80,
+      origin: { y: 0.5 },
+    });
   };
 
   // Full-Screen Front Landing Page (Hero Showcase inspired by reference design)
@@ -807,6 +884,15 @@ export default function App() {
             const mTask = tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
             if (mTask) handleDeleteTask(mTask.id);
           }}
+        />
+
+        <PostRegisterOrientationModal
+          isOpen={isOrientationModalOpen}
+          onClose={() => setIsOrientationModalOpen(false)}
+          currentUser={orientationMember || currentUser}
+          officialSocials={officialAdminSocials}
+          mandatoryTask={tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'))}
+          onCompleteOrientation={handleCompleteOrientation}
         />
 
         <OfflineIndicator
@@ -918,6 +1004,15 @@ export default function App() {
           const mTask = tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
           if (mTask) handleDeleteTask(mTask.id);
         }}
+      />
+
+      <PostRegisterOrientationModal
+        isOpen={isOrientationModalOpen}
+        onClose={() => setIsOrientationModalOpen(false)}
+        currentUser={orientationMember || currentUser}
+        officialSocials={officialAdminSocials}
+        mandatoryTask={tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'))}
+        onCompleteOrientation={handleCompleteOrientation}
       />
       <TaskModal
         isOpen={isTaskModalOpen}

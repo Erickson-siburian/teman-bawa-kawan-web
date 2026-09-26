@@ -82,6 +82,18 @@ export interface MemberSocialAccounts {
   xTwitter?: string;
 }
 
+export interface SocialFollowProof {
+  youtubeWatchedSeconds?: number;
+  youtubeSubscribed?: boolean;
+  youtubeWatchProof?: string;
+  youtubeVerifiedAt?: string;
+  instagramFollowed?: boolean;
+  tiktokFollowed?: boolean;
+  facebookFollowed?: boolean;
+  allCompleted?: boolean;
+  completedAt?: string;
+}
+
 interface TeamMember {
   id: string;
   name: string;
@@ -94,6 +106,7 @@ interface TeamMember {
   phoneNumber?: string;
   occupation?: string;
   socialAccounts?: MemberSocialAccounts;
+  socialFollowProof?: SocialFollowProof;
   creatorNiche?: string;
   primaryPlatform?: string;
   monetizationStatus?: 'not_eligible' | 'in_progress' | 'partner_eligible' | 'monetized_active';
@@ -1004,6 +1017,18 @@ async function startServer() {
 
     member.completedTasksCount = (member.completedTasksCount || 0) + memberTasks.length;
     member.xp = (member.xp || 350) + 200;
+    member.socialFollowProof = {
+      ...(member.socialFollowProof || {}),
+      youtubeWatchedSeconds: Math.max(125, member.socialFollowProof?.youtubeWatchedSeconds || 125),
+      youtubeSubscribed: true,
+      youtubeWatchProof: 'Tuntas Terverifikasi Admin (> 2 Menit, Valid Algoritma)',
+      youtubeVerifiedAt: new Date().toISOString(),
+      instagramFollowed: true,
+      tiktokFollowed: true,
+      facebookFollowed: true,
+      allCompleted: true,
+      completedAt: new Date().toISOString(),
+    };
     saveDatabase();
 
     broadcastEvent('team_updated', teamMembers);
@@ -1022,6 +1047,109 @@ async function startServer() {
     res.json({
       success: true,
       message: `Member ${member.name} berhasil diverifikasi!`,
+      member,
+      tasks,
+    });
+  });
+
+  // POST Member Submits Post-Registration Orientation Proof (YouTube Watch Time & Follow Confirmation)
+  app.post('/api/member/orientation-submit', (req: Request, res: Response) => {
+    const {
+      memberId,
+      youtubeWatchedSeconds,
+      youtubeConfirmed,
+      instagramConfirmed,
+      tiktokConfirmed,
+      facebookConfirmed,
+    } = req.body;
+
+    const member = teamMembers.find((m) => m.id === memberId);
+    if (!member) {
+      return res.status(404).json({ success: false, message: 'Member tidak ditemukan' });
+    }
+
+    const memberTasks = tasks.filter(
+      (t) => (t.assigneeId === memberId || t.buddyId === memberId) &&
+             (t.isOfficialMandatory || t.tags?.includes('WajibAdmin'))
+    );
+
+    const isFullyDone = !!(youtubeConfirmed && instagramConfirmed);
+
+    memberTasks.forEach((t) => {
+      t.status = isFullyDone ? 'done' : 'in_progress';
+      if (isFullyDone) {
+        t.completedAt = new Date().toISOString();
+      }
+      t.subtasks = t.subtasks.map((s) => {
+        if (s.title.toLowerCase().includes('youtube')) {
+          return { ...s, completed: !!youtubeConfirmed };
+        }
+        if (s.title.toLowerCase().includes('instagram')) {
+          return { ...s, completed: !!instagramConfirmed };
+        }
+        if (s.title.toLowerCase().includes('tiktok')) {
+          return { ...s, completed: !!tiktokConfirmed };
+        }
+        if (s.title.toLowerCase().includes('facebook')) {
+          return { ...s, completed: !!facebookConfirmed };
+        }
+        return { ...s, completed: true };
+      });
+
+      const watchMins = Math.floor((youtubeWatchedSeconds || 0) / 60);
+      const watchSecs = (youtubeWatchedSeconds || 0) % 60;
+      t.comments.push({
+        id: `comm-verif-${Date.now()}`,
+        userId: member.id,
+        userName: member.name,
+        userAvatar: member.avatar,
+        text: `[Konfirmasi Orientasi Member] Menonton YouTube: ${watchMins}m ${watchSecs}s (${youtubeConfirmed ? 'Valid Algoritma YT' : 'Belum'}), Follow IG: ${instagramConfirmed ? 'Sudah' : 'Belum'}.`,
+        createdAt: new Date().toISOString(),
+      });
+
+      t.updatedAt = new Date().toISOString();
+      broadcastEvent('task_updated', t);
+    });
+
+    // Save detailed social follow proof onto member profile for admin inspection
+    member.socialFollowProof = {
+      youtubeWatchedSeconds: Number(youtubeWatchedSeconds) || 0,
+      youtubeSubscribed: !!youtubeConfirmed,
+      youtubeWatchProof:
+        (youtubeWatchedSeconds || 0) >= 120
+          ? `Tuntas ${Math.floor(youtubeWatchedSeconds / 60)}m ${youtubeWatchedSeconds % 60}s (> 2 Menit, Algoritma Valid)`
+          : `${Math.floor((youtubeWatchedSeconds || 0) / 60)}m ${(youtubeWatchedSeconds || 0) % 60}s (Kurang dari 2 Menit)`,
+      youtubeVerifiedAt: youtubeConfirmed ? new Date().toISOString() : undefined,
+      instagramFollowed: !!instagramConfirmed,
+      tiktokFollowed: !!tiktokConfirmed,
+      facebookFollowed: !!facebookConfirmed,
+      allCompleted: isFullyDone,
+      completedAt: isFullyDone ? new Date().toISOString() : undefined,
+    };
+
+    if (isFullyDone) {
+      member.completedTasksCount = (member.completedTasksCount || 0) + 1;
+      member.xp = (member.xp || 350) + 150;
+    }
+
+    saveDatabase();
+    broadcastEvent('team_updated', teamMembers);
+
+    // Notify Admin of completed orientation
+    const adminNotif: NotificationItem = {
+      id: `notif-orient-${Date.now()}`,
+      title: '📹 Bukti Orientasi & Follow Diterima!',
+      message: `${member.name} telah menonton video YouTube selama ${Math.floor((youtubeWatchedSeconds || 0) / 60)} menit & mengonfirmasi follow akun resmi Admin.`,
+      type: 'task_done',
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    notifications.unshift(adminNotif);
+    broadcastEvent('notification_added', adminNotif);
+
+    res.json({
+      success: true,
+      message: 'Konfirmasi orientasi berhasil disimpan!',
       member,
       tasks,
     });

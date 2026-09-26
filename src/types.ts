@@ -58,6 +58,8 @@ export interface Task {
   category: TaskCategory;
   platform?: SocialPlatform;
   contentFormat?: ContentFormat;
+  mediaLink?: string; // Link YouTube / Sosmed tugas / follow admin
+  isOfficialMandatory?: boolean; // Wajib follow admin sebelum bergabung penuh
   monetizationGoal?: string; // Target monetisasi (misal: "Sponsor Brand X", "Affiliate Review", "4.000 Jam Tayang YT")
   tags: string[];
   subtasks: Subtask[];
@@ -94,16 +96,31 @@ export interface MemberSocialAccounts {
   xTwitter?: string;
 }
 
+export interface SocialFollowProof {
+  youtubeWatchedSeconds?: number;
+  youtubeSubscribed?: boolean;
+  youtubeWatchProof?: string;
+  youtubeVerifiedAt?: string;
+  instagramFollowed?: boolean;
+  tiktokFollowed?: boolean;
+  facebookFollowed?: boolean;
+  allCompleted?: boolean;
+  completedAt?: string;
+}
+
 export interface TeamMember {
   id: string;
   name: string;
   email: string;
+  password?: string;
+  userType?: 'admin' | 'user';
   role: string;
   avatar: string;
   gender?: 'Laki-Laki' | 'Perempuan';
   phoneNumber?: string;
   occupation?: string;
   socialAccounts?: MemberSocialAccounts;
+  socialFollowProof?: SocialFollowProof;
   creatorNiche?: string; // Niche konten pegiat medsos
   primaryPlatform?: string;
   monetizationStatus?: 'monetized' | 'in_progress' | 'target_reached';

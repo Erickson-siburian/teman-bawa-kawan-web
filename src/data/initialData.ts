@@ -75,6 +75,17 @@ export const initialTeamMembers: TeamMember[] = [
     onTimeRate: 86,
     status: 'online',
     joinedAt: '2026-02-01T10:15:00Z',
+    socialFollowProof: {
+      youtubeWatchedSeconds: 140,
+      youtubeSubscribed: true,
+      youtubeWatchProof: 'Tuntas 2m 20s (> 2 Menit, Algoritma Valid)',
+      youtubeVerifiedAt: '2026-02-01T10:30:00Z',
+      instagramFollowed: true,
+      tiktokFollowed: true,
+      facebookFollowed: true,
+      allCompleted: true,
+      completedAt: '2026-02-01T10:30:00Z',
+    },
   },
   {
     id: 'user-3',
@@ -109,6 +120,14 @@ export const initialTeamMembers: TeamMember[] = [
     onTimeRate: 88,
     status: 'online',
     joinedAt: '2026-02-10T14:20:00Z',
+    socialFollowProof: {
+      youtubeWatchedSeconds: 52,
+      youtubeSubscribed: false,
+      youtubeWatchProof: '0m 52s (Kurang dari 2 Menit)',
+      instagramFollowed: true,
+      tiktokFollowed: false,
+      allCompleted: false,
+    },
   },
   {
     id: 'user-4',

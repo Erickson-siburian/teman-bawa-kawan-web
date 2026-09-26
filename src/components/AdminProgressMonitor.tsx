@@ -21,6 +21,12 @@ import {
   Trash2,
   Save,
   Radio,
+  Youtube,
+  Instagram,
+  HelpCircle,
+  Share2,
+  Copy,
+  Info,
 } from 'lucide-react';
 import { Task, TeamMember, TaskStatus, MemberSocialAccounts } from '../types';
 
@@ -49,10 +55,15 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
   onVerifyMember,
   onDeleteTask,
 }) => {
-  const [filterStatus, setFilterStatus] = useState<'all' | 'new_members' | 'completed' | 'in_progress' | 'unassigned'>('all');
+  const [filterStatus, setFilterStatus] = useState<
+    'all' | 'new_members' | 'social_verified' | 'social_pending' | 'completed' | 'in_progress' | 'unassigned'
+  >('all');
   const [searchMember, setSearchMember] = useState('');
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [verifyingMemberId, setVerifyingMemberId] = useState<string | null>(null);
+  const [showAdminGuideModal, setShowAdminGuideModal] = useState(false);
+  const [showShareDistinctionModal, setShowShareDistinctionModal] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState('');
 
   // Official Admin Sosmed settings state
   const [showSosmedSettings, setShowSosmedSettings] = useState(false);
@@ -125,6 +136,18 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
 
       const isNew = isMemberNew(member);
 
+      const mandatoryOrientationTask = assignedTasks.find(
+        (t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin')
+      );
+      const ytSubtask = mandatoryOrientationTask?.subtasks.find((s) => s.title.toLowerCase().includes('youtube'));
+      const igSubtask = mandatoryOrientationTask?.subtasks.find((s) => s.title.toLowerCase().includes('instagram'));
+      const ttSubtask = mandatoryOrientationTask?.subtasks.find((s) => s.title.toLowerCase().includes('tiktok'));
+      const verifComment = mandatoryOrientationTask?.comments.find((c) => c.text.includes('[Konfirmasi Orientasi Member]'));
+
+      const ytDone = ytSubtask?.completed || false;
+      const igDone = igSubtask?.completed || false;
+      const ttDone = ttSubtask?.completed || false;
+
       return {
         member,
         total,
@@ -133,6 +156,11 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
         progressPercent,
         stateLabel,
         isNew,
+        mandatoryOrientationTask,
+        ytDone,
+        igDone,
+        ttDone,
+        verifComment,
         assignedTasks,
         doneTasks,
         ongoingTasks,
@@ -153,6 +181,20 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
     (m) => m.stateLabel === 'no_tasks'
   ).length;
 
+  const socialVerifiedCount = memberProgressList.filter(
+    (m) =>
+      (m.member.socialFollowProof?.youtubeWatchedSeconds || 0) >= 120 ||
+      m.member.socialFollowProof?.allCompleted === true ||
+      m.stateLabel === 'completed_all'
+  ).length;
+
+  const socialPendingCount = memberProgressList.filter(
+    (m) =>
+      m.member.userType !== 'admin' &&
+      (m.member.socialFollowProof?.youtubeWatchedSeconds || 0) < 120 &&
+      m.stateLabel !== 'completed_all'
+  ).length;
+
   // Filtered members by search query and category
   const filteredMemberStats = useMemo(() => {
     return memberProgressList.filter((item) => {
@@ -165,6 +207,16 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
       let matchesCategory = true;
       if (filterStatus === 'new_members') {
         matchesCategory = item.isNew;
+      } else if (filterStatus === 'social_verified') {
+        matchesCategory =
+          (item.member.socialFollowProof?.youtubeWatchedSeconds || 0) >= 120 ||
+          item.member.socialFollowProof?.allCompleted === true ||
+          item.stateLabel === 'completed_all';
+      } else if (filterStatus === 'social_pending') {
+        matchesCategory =
+          item.member.userType !== 'admin' &&
+          (item.member.socialFollowProof?.youtubeWatchedSeconds || 0) < 120 &&
+          item.stateLabel !== 'completed_all';
       } else if (filterStatus === 'completed') {
         matchesCategory = item.stateLabel === 'completed_all';
       } else if (filterStatus === 'in_progress') {
@@ -201,7 +253,7 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
           </div>
 
           {/* Quick Action Button */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             {onOpenAdminSocialsModal && (
               <button
                 type="button"
@@ -216,8 +268,28 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
 
             <button
               type="button"
+              onClick={() => setShowAdminGuideModal(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 font-bold text-xs sm:text-sm border border-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5"
+              title="Lihat petunjuk cara admin menambahkan akun medsos ke website ini"
+            >
+              <HelpCircle className="w-4 h-4 text-emerald-300" />
+              <span>Petunjuk Medsos Admin</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowShareDistinctionModal(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 font-bold text-xs sm:text-sm border border-indigo-400/40 transition-all cursor-pointer flex items-center gap-1.5"
+              title="Pelajari cara membedakan website admin dan website yang dishare ke orang lain"
+            >
+              <Share2 className="w-4 h-4 text-indigo-300" />
+              <span>Bedakan Web Admin vs Share Link</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setShowSosmedSettings(!showSosmedSettings)}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm border border-white/20 transition-all cursor-pointer flex items-center gap-2"
+              className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm border border-white/20 transition-all cursor-pointer flex items-center gap-2"
             >
               <Settings className="w-4 h-4 text-amber-300" />
               <span>{showSosmedSettings ? 'Tutup Panel Medsos' : 'Form Medsos Admin'}</span>
@@ -523,6 +595,32 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
 
             <button
               type="button"
+              onClick={() => setFilterStatus('social_verified')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                filterStatus === 'social_verified'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+              }`}
+            >
+              <Youtube className="w-3.5 h-3.5 text-red-600" />
+              <span>YT &amp; Medsos Valid ({socialVerifiedCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFilterStatus('social_pending')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                filterStatus === 'social_pending'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
+              <span>Medsos Belum Lengkap ({socialPendingCount})</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setFilterStatus('unassigned')}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 filterStatus === 'unassigned'
@@ -555,6 +653,7 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
                 <th className="py-3.5 px-4">Member Aktif</th>
+                <th className="py-3.5 px-4">Validasi Medsos &amp; YT (&gt; 2 Menit)</th>
                 <th className="py-3.5 px-4">Status Progres Tugas</th>
                 <th className="py-3.5 px-4 text-center">Tuntas / Total</th>
                 <th className="py-3.5 px-4">Persentase</th>
@@ -565,7 +664,7 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
             <tbody className="divide-y divide-slate-200">
               {filteredMemberStats.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
+                  <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
                     Tidak ada member yang cocok dengan filter atau kata kunci pencarian.
                   </td>
                 </tr>
@@ -575,6 +674,8 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
                   const isFinished = item.stateLabel === 'completed_all';
                   const isProcessing = item.stateLabel === 'in_progress';
                   const isUnassigned = item.stateLabel === 'no_tasks';
+                  const ytSecs = m.socialFollowProof?.youtubeWatchedSeconds ?? 0;
+                  const isYtValid = ytSecs >= 120 || isFinished;
 
                   return (
                     <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
@@ -628,6 +729,63 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
                                 )}
                               </div>
                             )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Validasi Medsos & Watch Time YouTube (> 2 Menit) */}
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-1.5 min-w-[170px]">
+                          {/* YouTube Algorithm & Watch Time Badge */}
+                          {m.userType === 'admin' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 text-[10px] font-bold border border-amber-200">
+                              <span>👑 Akun Admin</span>
+                            </span>
+                          ) : isYtValid ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[10px] font-bold border border-emerald-300">
+                              <Youtube className="w-3 h-3 text-red-600 shrink-0" />
+                              <span>
+                                {ytSecs > 0
+                                  ? `Tuntas ${Math.floor(ytSecs / 60)}m ${ytSecs % 60}s (>2m Valid)`
+                                  : 'Tuntas Terverifikasi (>2m)'}
+                              </span>
+                            </span>
+                          ) : ytSecs > 0 ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-300">
+                              <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span>Nonton {Math.floor(ytSecs / 60)}m {ytSecs % 60}s (Kurang dari 2m)</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium border border-slate-200">
+                              <Youtube className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span>Belum Menonton 2 Menit</span>
+                            </span>
+                          )}
+
+                          {/* Instagram & TikTok Follow Status */}
+                          <div className="flex items-center gap-1.5 text-[9px]">
+                            <span
+                              className={`px-1.5 py-0.5 rounded font-bold border ${
+                                m.socialFollowProof?.instagramFollowed || isFinished || m.userType === 'admin'
+                                  ? 'bg-pink-100 text-pink-800 border-pink-300'
+                                  : 'bg-slate-100 text-slate-500 border-slate-200'
+                              }`}
+                            >
+                              {m.socialFollowProof?.instagramFollowed || isFinished || m.userType === 'admin'
+                                ? '✓ IG Follow'
+                                : '✕ IG Belum'}
+                            </span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded font-bold border ${
+                                m.socialFollowProof?.tiktokFollowed || isFinished || m.userType === 'admin'
+                                  ? 'bg-slate-900 text-white border-slate-800'
+                                  : 'bg-slate-100 text-slate-500 border-slate-200'
+                              }`}
+                            >
+                              {m.socialFollowProof?.tiktokFollowed || isFinished || m.userType === 'admin'
+                                ? '✓ TikTok'
+                                : '✕ TikTok'}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -817,6 +975,99 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
               </div>
             </div>
 
+            {/* Bukti Verifikasi Orientasi Medsos (YouTube Watch Time & Follow) */}
+            <div className="p-4 rounded-2xl bg-slate-900 text-white mb-4 space-y-3 shadow-md border border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Youtube className="w-5 h-5 text-red-500" />
+                  <span className="text-xs sm:text-sm font-black text-white">
+                    Bukti Validasi Tontonan YouTube &amp; Sinergi Medsos:
+                  </span>
+                </div>
+                {activeSelectedMemberStat.member.socialFollowProof?.youtubeWatchedSeconds &&
+                activeSelectedMemberStat.member.socialFollowProof.youtubeWatchedSeconds >= 120 ? (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black uppercase">
+                    ✅ Memenuhi Syarat Algoritma YT (&gt; 2 Menit)
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black uppercase">
+                    ⏳ Dalam Pemantauan
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                {/* Watch Duration Card */}
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">Waktu Menonton Video YT</span>
+                  <p className="text-sm font-mono font-black text-white">
+                    {activeSelectedMemberStat.member.socialFollowProof?.youtubeWatchedSeconds
+                      ? `${Math.floor(activeSelectedMemberStat.member.socialFollowProof.youtubeWatchedSeconds / 60)}m ${activeSelectedMemberStat.member.socialFollowProof.youtubeWatchedSeconds % 60}s`
+                      : activeSelectedMemberStat.stateLabel === 'completed_all'
+                      ? 'Tuntas Terverifikasi'
+                      : '0 Menit (Belum Ditonton)'}
+                  </p>
+                  <p className="text-[9px] text-slate-400">
+                    Syarat subscriber YouTube valid: &gt; 120 detik (2 menit).
+                  </p>
+                </div>
+
+                {/* Status Follow Instagram */}
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">Follow Akun Instagram</span>
+                  <p className="text-sm font-black text-pink-400">
+                    {activeSelectedMemberStat.member.socialFollowProof?.instagramFollowed ||
+                    activeSelectedMemberStat.stateLabel === 'completed_all'
+                      ? '✅ Sudah Follow'
+                      : '❌ Belum Konfirmasi'}
+                  </p>
+                  <p className="text-[9px] text-slate-400">
+                    Akun: {activeSelectedMemberStat.member.socialAccounts?.instagram || 'Belum diisi'}
+                  </p>
+                </div>
+
+                {/* Status Follow TikTok */}
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">Follow Akun TikTok</span>
+                  <p className="text-sm font-black text-indigo-300">
+                    {activeSelectedMemberStat.member.socialFollowProof?.tiktokFollowed ||
+                    activeSelectedMemberStat.stateLabel === 'completed_all'
+                      ? '✅ Sudah Follow'
+                      : '❌ Belum Konfirmasi'}
+                  </p>
+                  <p className="text-[9px] text-slate-400">
+                    Akun: {activeSelectedMemberStat.member.socialAccounts?.tiktok || 'Belum diisi'}
+                  </p>
+                </div>
+              </div>
+
+              {onVerifyMember && activeSelectedMemberStat.ongoing > 0 && (
+                <div className="pt-1 flex items-center justify-between gap-3 border-t border-white/10">
+                  <span className="text-[11px] text-slate-300">
+                    Ingin langsung mengonfirmasi &amp; memberi lencana verifikasi ke member ini?
+                  </span>
+                  <button
+                    type="button"
+                    disabled={verifyingMemberId === activeSelectedMemberStat.member.id}
+                    onClick={async () => {
+                      setVerifyingMemberId(activeSelectedMemberStat.member.id);
+                      try {
+                        await onVerifyMember(activeSelectedMemberStat.member.id);
+                      } finally {
+                        setVerifyingMemberId(null);
+                      }
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>
+                      {verifyingMemberId === activeSelectedMemberStat.member.id ? 'Menyimpan...' : 'Verifikasi Cepat Sekarang'}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Member's Registered Social Accounts Box */}
             {activeSelectedMemberStat.member.socialAccounts && (
               <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 mb-4 space-y-2">
@@ -963,6 +1214,266 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
                 className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 1: Petunjuk Admin Menambahkan Akun Medsos */}
+      {showAdminGuideModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-emerald-200 animate-in fade-in zoom-in-95 duration-200 space-y-6">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">
+                  <HelpCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
+                    PANDUAN LENGKAP ADMIN
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 mt-0.5">
+                    Cara Menambahkan Akun Media Sosial Resmi Admin
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAdminGuideModal(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs text-slate-700">
+              {/* Step 1 */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex gap-3 items-start">
+                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                  1
+                </div>
+                <div>
+                  <p className="font-black text-slate-900">Buka Menu Pengaturan Medsos</p>
+                  <p className="text-slate-600 mt-0.5 leading-relaxed">
+                    Klik tombol <strong>&quot;Atur Link Medsos Wajib Member&quot;</strong> warna kuning di bagian atas halaman monitor ini, atau klik tombol <strong>&quot;Form Medsos Admin&quot;</strong>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex gap-3 items-start">
+                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                  2
+                </div>
+                <div>
+                  <p className="font-black text-slate-900">Masukkan Link atau Username Akun Anda</p>
+                  <p className="text-slate-600 mt-0.5 leading-relaxed">
+                    Isi tautan resmi Anda:
+                    <br />• <strong>YouTube:</strong> Masukkan link video atau channel Anda (contoh: <code>https://youtube.com/@adrian_andrew.id</code> atau <code>@adrian_andrew.id</code>).
+                    <br />• <strong>Instagram:</strong> Masukkan handle akun Anda (contoh: <code>@adrian_andrew.id</code>).
+                    <br />• <strong>TikTok:</strong> Masukkan username TikTok resmi (contoh: <code>@adrianandrew_tiktok</code>).
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex gap-3 items-start">
+                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                  3
+                </div>
+                <div>
+                  <p className="font-black text-slate-900">Uji Tautan Sebelum Menyimpan</p>
+                  <p className="text-slate-600 mt-0.5 leading-relaxed">
+                    Klik tombol <strong>&quot;Uji Buka Channel / Profil&quot;</strong> di sebelah kanan input untuk memastikan bahwa tautan langsung membuka halaman channel atau video Anda dengan benar.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex gap-3 items-start">
+                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                  4
+                </div>
+                <div>
+                  <p className="font-black text-slate-900">Aktifkan Misi Orientasi Otomatis &amp; Simpan</p>
+                  <p className="text-slate-600 mt-0.5 leading-relaxed">
+                    Pastikan opsi <strong>&quot;Aktifkan Tugas Orientasi Wajib untuk Semua Member Baru&quot;</strong> dalam keadaan centang hijau, lalu klik <strong>&quot;Simpan &amp; Terapkan Sinergi&quot;</strong>.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs space-y-1">
+              <p className="font-bold flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <span>Otomatisasi Sistem:</span>
+              </p>
+              <p className="text-emerald-800 leading-relaxed">
+                Setelah Anda menyimpan, setiap member baru yang melakukan pendaftaran akan otomatis disajikan layar misi menonton video YouTube Anda minimal 2 menit dan follow akun Instagram/TikTok Anda.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowAdminGuideModal(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+              >
+                Tutup Panduan
+              </button>
+              {onOpenAdminSocialsModal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAdminGuideModal(false);
+                    onOpenAdminSocialsModal();
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md cursor-pointer flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Buka Form Pengaturan Medsos Sekarang →</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2: Cara Membedakan Website Admin vs Website yang Dishare ke Orang Lain */}
+      {showShareDistinctionModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-indigo-200 animate-in fade-in zoom-in-95 duration-200 space-y-6">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black">
+                  <Share2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-black uppercase">
+                    PEMISAHAN AKSES &amp; KEAMANAN
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 mt-0.5">
+                    Membedakan Website Milik Admin vs Website yang Di-Share ke Orang Lain
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShareDistinctionModal(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Comparison Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              {/* Admin Website Card */}
+              <div className="p-5 rounded-2xl border-2 border-amber-300 bg-amber-50/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] uppercase">
+                    👑 Website Milik Admin
+                  </span>
+                  <span className="text-[10px] text-amber-800 font-semibold font-mono">userType: &apos;admin&apos;</span>
+                </div>
+                <h4 className="font-black text-sm text-slate-900">
+                  Panel Khusus Pengelola (Dashboard Admin)
+                </h4>
+                <ul className="space-y-1.5 text-slate-700 list-disc list-inside">
+                  <li>
+                    Hanya muncul ketika Anda <strong>login sebagai Admin</strong> ({currentUser.email}).
+                  </li>
+                  <li>
+                    Memiliki menu khusus <strong>&quot;👑 Monitor Tugas Member&quot;</strong> untuk melihat status seluruh member.
+                  </li>
+                  <li>
+                    Dapat melihat <strong>detik &amp; menit tonton YouTube</strong> masing-masing member (apakah sudah &gt; 2 menit).
+                  </li>
+                  <li>
+                    Dapat mengubah link media sosial resmi dan melakukan tombol <strong>&quot;Verifikasi Cepat&quot;</strong>.
+                  </li>
+                  <li>
+                    <strong>Jangan berikan password admin</strong> Anda kepada orang lain!
+                  </li>
+                </ul>
+              </div>
+
+              {/* Shared Website Card */}
+              <div className="p-5 rounded-2xl border-2 border-emerald-300 bg-emerald-50/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-500 text-white font-black text-[10px] uppercase">
+                    🌐 Website untuk Di-Share (Member/Tamu)
+                  </span>
+                  <span className="text-[10px] text-emerald-800 font-semibold font-mono">Public / Member View</span>
+                </div>
+                <h4 className="font-black text-sm text-slate-900">
+                  Halaman Depan &amp; Form Pendaftaran Publik
+                </h4>
+                <ul className="space-y-1.5 text-slate-700 list-disc list-inside">
+                  <li>
+                    Link yang Anda bagikan ke orang lain (WhatsApp, bio sosmed, dll).
+                  </li>
+                  <li>
+                    Orang lain akan melihat <strong>Halaman Depan (Landing Page)</strong> yang ramah dan tombol <strong>&quot;Daftar Sekarang&quot;</strong>.
+                  </li>
+                  <li>
+                    Calon member <strong>TIDAK BISA</strong> melihat panel monitor admin ataupun data rahasia orang lain.
+                  </li>
+                  <li>
+                    <strong>Setelah mendaftar</strong>, sistem mengarahkan mereka ke misi tonton YouTube 2 menit &amp; subscribe sebelum masuk ke dasbor member reguler.
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Quick Share Link Box */}
+            <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Copy className="w-4 h-4 text-emerald-400" />
+                  <span>Link Website yang Siap Dibagikan ke Calon Member:</span>
+                </span>
+                {copyFeedback && (
+                  <span className="text-xs text-emerald-400 font-bold animate-in fade-in">
+                    {copyFeedback}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}/?tab=landing&ref=${currentUser.referralCode}`}
+                  className="flex-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-mono text-emerald-300 focus:outline-hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}/?tab=landing&ref=${currentUser.referralCode}`;
+                    navigator.clipboard.writeText(shareUrl);
+                    setCopyFeedback('✅ Link Berhasil Disalin!');
+                    setTimeout(() => setCopyFeedback(''), 2500);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Salin Link Share</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Setiap orang yang mendaftar melalui link ini akan otomatis terhubung dengan kode referral Anda dan masuk dalam daftar pantauan di monitor ini.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowShareDistinctionModal(false)}
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer"
+              >
+                Saya Mengerti, Tutup
               </button>
             </div>
           </div>
