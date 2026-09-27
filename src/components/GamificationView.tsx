@@ -11,6 +11,8 @@ import {
   LayoutGrid,
   Table as TableIcon,
   X,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { ReferralRecord, TeamMember } from '../types';
 
@@ -20,6 +22,8 @@ interface GamificationViewProps {
   referrals?: ReferralRecord[];
   onRedeemReward?: (rewardName: string, cost: number) => void;
   onOpenRegisterModal?: () => void;
+  onEditMember?: (member: TeamMember) => void;
+  onDeleteMember?: (memberId: string) => void;
 }
 
 interface PlatformDef {
@@ -46,6 +50,8 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
   currentUser,
   allMembers,
   onOpenRegisterModal,
+  onEditMember,
+  onDeleteMember,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'total' | 'admin'>('total');
@@ -350,12 +356,13 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
                     <th className="py-3.5 px-4">Pekerjaan</th>
                     <th className="py-3.5 px-4">Akun Media Sosial</th>
                     <th className="py-3.5 px-4">Hak Akses</th>
+                    <th className="py-3.5 px-4 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {filteredMembers.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
+                      <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
                         Tidak ada member yang cocok dengan filter atau pencarian Anda.
                       </td>
                     </tr>
@@ -444,6 +451,37 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
                                 {isAdmin ? 'Admin' : 'Member'}
                               </span>
                               <span className="w-2 h-2 rounded-full bg-emerald-500" title="Aktif" />
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {onEditMember && (
+                                <button
+                                  type="button"
+                                  onClick={() => onEditMember(member)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                                  title="Edit Data Member"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+                              {onDeleteMember && (
+                                <button
+                                  type="button"
+                                  disabled={member.userType === 'admin' || member.id === 'user-1' || member.id === currentUser.id}
+                                  onClick={() => onDeleteMember(member.id)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                  title={
+                                    member.userType === 'admin' || member.id === 'user-1'
+                                      ? 'Akun Admin Utama tidak dapat dihapus'
+                                      : 'Hapus Member dari Daftar Aktif'
+                                  }
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Hapus</span>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -614,6 +652,36 @@ export const GamificationView: React.FC<GamificationViewProps> = ({
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                     <span>Gender: <strong>{member.gender || 'Laki-Laki'}</strong></span>
                     <span className="text-[11px] text-emerald-600 font-semibold">Terdaftar &amp; Terverifikasi</span>
+                  </div>
+
+                  {/* Edit and Delete Buttons in Grid View */}
+                  <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                    {onEditMember && (
+                      <button
+                        type="button"
+                        onClick={() => onEditMember(member)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Edit Member</span>
+                      </button>
+                    )}
+                    {onDeleteMember && (
+                      <button
+                        type="button"
+                        disabled={member.userType === 'admin' || member.id === 'user-1' || member.id === currentUser.id}
+                        onClick={() => onDeleteMember(member.id)}
+                        className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={
+                          member.userType === 'admin' || member.id === 'user-1'
+                            ? 'Akun Admin Utama tidak dapat dihapus'
+                            : 'Hapus Member'
+                        }
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );

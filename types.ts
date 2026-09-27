@@ -94,6 +94,20 @@ export interface MemberSocialAccounts {
   spotify?: string;
   detik?: string;
   xTwitter?: string;
+  whatsappGroup?: string;
+}
+
+export interface SocialFollowProof {
+  youtubeWatchedSeconds?: number;
+  youtubeSubscribed?: boolean;
+  youtubeWatchProof?: string;
+  youtubeVerifiedAt?: string;
+  instagramFollowed?: boolean;
+  tiktokFollowed?: boolean;
+  facebookFollowed?: boolean;
+  whatsappJoined?: boolean;
+  allCompleted?: boolean;
+  completedAt?: string;
 }
 
 export interface TeamMember {
@@ -108,6 +122,7 @@ export interface TeamMember {
   phoneNumber?: string;
   occupation?: string;
   socialAccounts?: MemberSocialAccounts;
+  socialFollowProof?: SocialFollowProof;
   creatorNiche?: string; // Niche konten pegiat medsos
   primaryPlatform?: string;
   monetizationStatus?: 'monetized' | 'in_progress' | 'target_reached';

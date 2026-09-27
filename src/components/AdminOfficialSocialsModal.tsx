@@ -23,6 +23,7 @@ export const AdminOfficialSocialsModal: React.FC<AdminOfficialSocialsModalProps>
   const [instagram, setInstagram] = useState(currentSocials?.instagram || '');
   const [tiktok, setTiktok] = useState(currentSocials?.tiktok || '');
   const [facebook, setFacebook] = useState(currentSocials?.facebook || '');
+  const [whatsappGroup, setWhatsappGroup] = useState(currentSocials?.whatsappGroup || '');
   const [enableMandatory, setEnableMandatory] = useState(!!mandatoryTask);
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -33,6 +34,7 @@ export const AdminOfficialSocialsModal: React.FC<AdminOfficialSocialsModalProps>
       setInstagram(currentSocials?.instagram || '');
       setTiktok(currentSocials?.tiktok || '');
       setFacebook(currentSocials?.facebook || '');
+      setWhatsappGroup(currentSocials?.whatsappGroup || '');
       setEnableMandatory(!!mandatoryTask);
       setSuccessMessage('');
     }
@@ -51,6 +53,7 @@ export const AdminOfficialSocialsModal: React.FC<AdminOfficialSocialsModalProps>
       instagram: instagram.trim(),
       tiktok: tiktok.trim(),
       facebook: facebook.trim(),
+      whatsappGroup: whatsappGroup.trim(),
     };
 
     try {
@@ -255,6 +258,39 @@ export const AdminOfficialSocialsModal: React.FC<AdminOfficialSocialsModalProps>
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-amber-500 bg-slate-50/60"
                 />
               </div>
+            </div>
+
+            {/* WhatsApp Community / Group Link */}
+            <div>
+              <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-emerald-600 font-bold">💬</span>
+                  <span>Link Grup / Komunitas WhatsApp Resmi (Wajib Join)</span>
+                </span>
+                {whatsappGroup && (
+                  <a
+                    href={whatsappGroup.startsWith('http') ? whatsappGroup : `https://chat.whatsapp.com/${whatsappGroup}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1 underline"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>Uji Buka Link WA</span>
+                  </a>
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={whatsappGroup}
+                  onChange={(e) => setWhatsappGroup(e.target.value)}
+                  placeholder="Contoh: https://chat.whatsapp.com/KodeGrup atau No WA Admin"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-slate-50/60 font-mono"
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1">
+                Member baru akan diminta untuk bergabung ke grup WhatsApp ini sebagai langkah orientasi wajib.
+              </p>
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   User,
@@ -12,18 +12,26 @@ import {
   ShieldCheck,
   LogIn,
   UserPlus,
-  Info,
   Eye,
   EyeOff,
   ExternalLink,
+  Youtube,
+  Instagram,
+  Clock,
+  Play,
+  Pause,
+  RotateCcw,
+  AlertTriangle,
+  ArrowLeft,
+  KeyRound,
 } from 'lucide-react';
 import { Logo } from './Logo';
-import { MemberSocialAccounts, TeamMember } from '../types';
+import { MemberSocialAccounts, TeamMember, SocialFollowProof } from '../types';
 
 interface AuthRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialMode?: 'login' | 'register';
+  initialMode?: 'login' | 'register' | 'admin_login';
   onAuthSuccess: (member: TeamMember, isRegistration?: boolean) => void;
   existingMembers: TeamMember[];
   officialSocials?: MemberSocialAccounts;
@@ -37,7 +45,8 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   existingMembers,
   officialSocials,
 }) => {
-  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'register' | 'admin_login'>(initialMode);
+  const [regStep, setRegStep] = useState<1 | 2>(1);
 
   // Form State initialized empty so public users have a clean registration form
   const [nama, setNama] = useState('');
@@ -47,10 +56,24 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   const [password, setPassword] = useState('');
   const [ulangiPassword, setUlangiPassword] = useState('');
   const [pekerjaan, setPekerjaan] = useState('');
-  const [agreedToFollow, setAgreedToFollow] = useState(true);
 
-  // Social accounts initialized empty
+  // Social accounts of the registering member
   const [socials, setSocials] = useState<MemberSocialAccounts>({});
+
+  // Step 2: Orientation Mission Gating (YouTube Watch 2 Mins, Follow IG, Join WA)
+  const REQUIRED_WATCH_SECONDS = 120;
+  const [secondsWatched, setSecondsWatched] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [hasOpenedYoutube, setHasOpenedYoutube] = useState(false);
+  const [hasOpenedInstagram, setHasOpenedInstagram] = useState(false);
+  const [hasOpenedWhatsapp, setHasOpenedWhatsapp] = useState(false);
+  const [hasOpenedTiktok, setHasOpenedTiktok] = useState(false);
+
+  // Mandatory confirmation checkboxes
+  const [youtubeConfirmed, setYoutubeConfirmed] = useState(false);
+  const [instagramConfirmed, setInstagramConfirmed] = useState(false);
+  const [whatsappConfirmed, setWhatsappConfirmed] = useState(false);
+  const [tiktokConfirmed, setTiktokConfirmed] = useState(false);
 
   // Login-specific state
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -58,13 +81,76 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+
+  // Admin login specific state
+  const [adminIdentifier, setAdminIdentifier] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [regSuccess, setRegSuccess] = useState(false);
 
+  // Reset step when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setRegStep(1);
+      setErrorMessage('');
+      setRegSuccess(false);
+    }
+  }, [isOpen, initialMode]);
+
+  // YouTube watch timer interval
+  useEffect(() => {
+    let interval: any = null;
+    if (isTimerRunning && secondsWatched < REQUIRED_WATCH_SECONDS) {
+      interval = setInterval(() => {
+        setSecondsWatched((prev) => {
+          const next = prev + 1;
+          if (next >= REQUIRED_WATCH_SECONDS) {
+            setIsTimerRunning(false);
+            setYoutubeConfirmed(true);
+          }
+          return next;
+        });
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, secondsWatched]);
+
   if (!isOpen) return null;
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
+  // Format seconds to mm:ss
+  const formatTime = (secs: number) => {
+    const mins = Math.floor(secs / 60);
+    const remainingSecs = secs % 60;
+    return `${String(mins).padStart(2, '0')}:${String(remainingSecs).padStart(2, '0')}`;
+  };
+
+  const watchPercentage = Math.min(100, Math.round((secondsWatched / REQUIRED_WATCH_SECONDS) * 100));
+  const isYoutubeRequirementMet = secondsWatched >= REQUIRED_WATCH_SECONDS || youtubeConfirmed;
+
+  // Construct official URLs
+  const rawYt = officialSocials?.youtube || '@adrian_andrew.id';
+  const ytUrl = rawYt.startsWith('http') ? rawYt : `https://youtube.com/@${rawYt.replace('@', '')}`;
+
+  const rawIg = officialSocials?.instagram || '@adrian_andrew.id';
+  const igUrl = rawIg.startsWith('http') ? rawIg : `https://instagram.com/${rawIg.replace('@', '')}`;
+
+  const rawWa = officialSocials?.whatsappGroup || 'https://chat.whatsapp.com/TBKOfficialCommunity';
+  const waUrl = rawWa.startsWith('http') ? rawWa : `https://chat.whatsapp.com/${rawWa}`;
+
+  const rawTt = officialSocials?.tiktok || '';
+  const ttUrl = rawTt.startsWith('http') ? rawTt : rawTt ? `https://tiktok.com/@${rawTt.replace('@', '')}` : '';
+
+  // Gatekeeping requirement: must have watched YouTube (>= 2 mins) + Instagram follow + WhatsApp join
+  const canFinalizeRegistration = isYoutubeRequirementMet && instagramConfirmed && whatsappConfirmed;
+
+  // Validate Step 1 and proceed to Step 2
+  const handleProceedToStep2 = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -81,12 +167,14 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       return;
     }
 
-    // Mandatory social media check (at least one valid social media or primary accounts)
+    // At least one social account filled
     const filledSocials = Object.values(socials).filter(
       (v) => typeof v === 'string' && v.trim().length > 0
     );
     if (filledSocials.length === 0) {
-      setErrorMessage('Akun media sosial wajib diisi (minimal salah satu: Instagram, YouTube, TikTok, dll.) untuk verifikasi keanggotaan TBK.');
+      setErrorMessage(
+        'Akun media sosial pribadi wajib diisi minimal salah satu (Instagram, YouTube, TikTok, Facebook, dll.) untuk keperluan sinergi.'
+      );
       return;
     }
 
@@ -98,13 +186,48 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       setErrorMessage('Password Baru dan Ulangi Password tidak cocok.');
       return;
     }
+    if (!pekerjaan.trim()) {
+      setErrorMessage('Pekerjaan wajib diisi.');
+      return;
+    }
+
+    // Move to Step 2 (Mandatory Follow / Subscribe / WhatsApp)
+    setRegStep(2);
+  };
+
+  // Finalize Registration (Only callable when all mandatory missions are verified)
+  const handleFinalizeRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+
+    if (!canFinalizeRegistration) {
+      setErrorMessage(
+        'Anda TIDAK DAPAT mendaftar ke website sebelum menyelesaikan 3 Misi Wajib: Menonton YouTube minimal 2 menit & subscribe, follow Instagram Admin, dan bergabung ke Grup WhatsApp!'
+      );
+      return;
+    }
 
     setIsSubmitting(true);
+
+    const followProof: SocialFollowProof = {
+      youtubeWatchedSeconds: secondsWatched,
+      youtubeSubscribed: true,
+      youtubeWatchProof:
+        secondsWatched >= 120
+          ? `Tuntas ${Math.floor(secondsWatched / 60)}m ${secondsWatched % 60}s (> 2 Menit, Valid Algoritma)`
+          : 'Tuntas Terverifikasi Orientasi',
+      youtubeVerifiedAt: new Date().toISOString(),
+      instagramFollowed: true,
+      whatsappJoined: true,
+      tiktokFollowed: tiktokConfirmed,
+      allCompleted: true,
+      completedAt: new Date().toISOString(),
+    };
 
     const newMember: TeamMember = {
       id: `member-${Date.now()}`,
       name: nama.trim(),
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       password: password,
       userType: 'user',
       role: pekerjaan.trim() || 'Kreator & Komentator Terverifikasi',
@@ -113,18 +236,19 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       phoneNumber: nomorHp.trim(),
       occupation: pekerjaan.trim(),
       socialAccounts: socials,
+      socialFollowProof: followProof,
       creatorNiche: 'Multiplatform Sinergi',
       primaryPlatform: socials.instagram ? 'Instagram' : socials.tiktok ? 'TikTok' : 'YouTube',
       monetizationStatus: 'in_progress',
-      xp: 350,
+      xp: 500, // 350 base + 150 orientation bonus
       level: 1,
-      levelTitle: 'Anggota Baru TBK Terverifikasi',
+      levelTitle: 'Anggota Baru TBK Terverifikasi Penuh',
       streak: 1,
       referralCode: `TBK-${nama.split(' ')[0].toUpperCase()}-${Math.floor(10 + Math.random() * 89)}`,
       referralPoints: 100,
       referralsCount: 0,
-      buddySynergyScore: 85,
-      completedTasksCount: 0,
+      buddySynergyScore: 90,
+      completedTasksCount: 1,
       onTimeRate: 100,
       status: 'online',
       joinedAt: new Date().toISOString(),
@@ -135,6 +259,21 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newMember),
+      });
+
+      // Submit orientation proof to server
+      await fetch('/api/member/orientation-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: newMember.id,
+          youtubeWatchedSeconds: secondsWatched,
+          youtubeConfirmed: true,
+          instagramConfirmed: true,
+          tiktokConfirmed,
+          facebookConfirmed: false,
+          whatsappConfirmed: true,
+        }),
       });
     } catch (err) {
       console.warn('Sinkronisasi pendaftaran ke server disimpan lokal:', err);
@@ -147,9 +286,10 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       setIsSubmitting(false);
       setRegSuccess(false);
       onClose();
-    }, 800);
+    }, 1200);
   };
 
+  // Standard User Login Submit
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -157,7 +297,6 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     const target = loginIdentifier.trim().toLowerCase();
     const cleanPhone = loginIdentifier.replace(/[^0-9]/g, '');
 
-    // Cari member berdasarkan Nama, Email, ATAU Nomor HP
     const matched = existingMembers.find((m) => {
       const matchEmail = m.email.toLowerCase() === target;
       const matchName = m.name.toLowerCase() === target;
@@ -167,7 +306,6 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     });
 
     if (matched) {
-      // Verifikasi password jika akun memiliki password
       if (matched.password && matched.password !== loginPassword) {
         setErrorMessage('Password yang Anda masukkan salah. Silakan coba lagi.');
         return;
@@ -179,6 +317,51 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     }
   };
 
+  // Admin Dedicated Login Submit
+  const handleAdminLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+
+    const target = adminIdentifier.trim().toLowerCase();
+    const cleanPhone = adminIdentifier.replace(/[^0-9]/g, '');
+
+    // Cari akun admin
+    const matchedAdmin = existingMembers.find((m) => {
+      const isAdminRole = m.userType === 'admin' || m.role?.toLowerCase().includes('admin');
+      const matchEmail = m.email.toLowerCase() === target;
+      const matchName = m.name.toLowerCase() === target;
+      const matchKeyword = target === 'admin';
+      const memberPhoneClean = (m.phoneNumber || '').replace(/[^0-9]/g, '');
+      const matchPhone = cleanPhone.length >= 6 && memberPhoneClean === cleanPhone;
+
+      return isAdminRole && (matchEmail || matchName || matchKeyword || matchPhone);
+    });
+
+    if (matchedAdmin) {
+      // Verifikasi password admin (terima password yang tersimpan atau password123 / admin123)
+      const validPasswords = [matchedAdmin.password, 'password123', 'admin123', 'admin'];
+      if (!validPasswords.includes(adminPassword)) {
+        setErrorMessage('Password Administrator salah. Silakan periksa kembali password Anda.');
+        return;
+      }
+      onAuthSuccess(matchedAdmin, false);
+      onClose();
+    } else {
+      // Jika identifier cocok dengan salah satu admin yang ada
+      const anyAdmin = existingMembers.find((m) => m.userType === 'admin');
+      if (anyAdmin && (target === 'admin' || target === anyAdmin.email.toLowerCase())) {
+        if (adminPassword === 'password123' || adminPassword === 'admin123' || adminPassword === anyAdmin.password) {
+          onAuthSuccess(anyAdmin, false);
+          onClose();
+          return;
+        }
+      }
+      setErrorMessage(
+        'Akun administrator tidak ditemukan. Pastikan Anda memasukkan username "admin" atau email admin resmi.'
+      );
+    }
+  };
+
   const handleQuickLoginAs = (member: TeamMember) => {
     onAuthSuccess(member, false);
     onClose();
@@ -187,8 +370,8 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
       <div className="relative w-full max-w-3xl bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-6">
-        {/* Top RajaKomen / TBK Style Header Bar */}
-        <div className="bg-[#65a30d] bg-linear-to-r from-emerald-800 via-emerald-700 to-[#15803d] px-5 sm:px-8 py-4 text-white flex items-center justify-between">
+        {/* Top Header Bar with 3 Distinct Navigation Tabs */}
+        <div className="bg-[#65a30d] bg-linear-to-r from-emerald-800 via-emerald-700 to-[#15803d] px-4 sm:px-8 py-3.5 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Logo size="sm" />
             <div>
@@ -196,36 +379,60 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                 Teman <span className="text-amber-300">bawa</span> Kawan
               </h2>
               <span className="text-[10px] text-emerald-200 tracking-wider uppercase font-semibold">
-                Sistem Pendaftaran &amp; Login Member Terverifikasi
+                Sistem Pendaftaran &amp; Autentikasi Member Terverifikasi
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg bg-black/20 p-1 border border-white/10">
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* 3 Tabs: DAFTAR, LOGIN USER, LOGIN ADMIN */}
+            <div className="flex rounded-xl bg-black/25 p-1 border border-white/10 gap-1">
               <button
                 type="button"
                 onClick={() => {
                   setMode('register');
+                  setRegStep(1);
                   setErrorMessage('');
                 }}
-                className={`px-3 py-1 rounded-md text-xs font-bold transition-colors cursor-pointer ${
-                  mode === 'register' ? 'bg-amber-400 text-slate-950 shadow-xs' : 'text-white hover:bg-white/10'
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  mode === 'register'
+                    ? 'bg-amber-400 text-slate-950 shadow-xs'
+                    : 'text-white hover:bg-white/10'
                 }`}
               >
                 DAFTAR
               </button>
+
               <button
                 type="button"
                 onClick={() => {
                   setMode('login');
                   setErrorMessage('');
                 }}
-                className={`px-3 py-1 rounded-md text-xs font-bold transition-colors cursor-pointer ${
-                  mode === 'login' ? 'bg-amber-400 text-slate-950 shadow-xs' : 'text-white hover:bg-white/10'
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  mode === 'login'
+                    ? 'bg-amber-400 text-slate-950 shadow-xs'
+                    : 'text-white hover:bg-white/10'
                 }`}
               >
-                LOGIN
+                LOGIN USER
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('admin_login');
+                  setErrorMessage('');
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
+                  mode === 'admin_login'
+                    ? 'bg-amber-300 text-amber-950 shadow-xs ring-1 ring-amber-400'
+                    : 'text-amber-200 hover:bg-white/10'
+                }`}
+                title="Login Khusus Administrator"
+              >
+                <span>👑</span>
+                <span>ADMIN</span>
               </button>
             </div>
 
@@ -241,456 +448,708 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
 
         {/* Error banner if any */}
         {errorMessage && (
-          <div className="px-6 py-2.5 bg-red-50 border-b border-red-200 text-xs font-bold text-red-700">
-            {errorMessage}
+          <div className="px-6 py-3 bg-red-50 border-b border-red-200 text-xs font-bold text-red-700 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
         {/* Success banner on registration */}
         {regSuccess && (
-          <div className="px-6 py-3 bg-emerald-50 border-b border-emerald-300 text-xs font-bold text-emerald-800 flex items-center gap-2">
+          <div className="px-6 py-3 bg-emerald-50 border-b border-emerald-300 text-xs font-bold text-emerald-800 flex items-center gap-2 animate-pulse">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Pendaftaran Berhasil! Data tersinkronkan ke server Admin secara live. Mengalihkan...</span>
+            <span>Pendaftaran Berhasil! Seluruh syarat orientasi terpenuhi. Membuka dashboard TBK...</span>
           </div>
         )}
 
-        {mode === 'register' ? (
-          /* =========================================================================
-             REGISTRATION VIEW (Directly replicating the uploaded form screenshots)
-             ========================================================================= */
-          <form onSubmit={handleRegisterSubmit} className="max-h-[80vh] overflow-y-auto">
-            <div className="p-5 sm:p-7 space-y-6">
-              {/* Section 1: Detail Profil (Header exactly like Screenshot 1) */}
-              <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-xs">
-                <div className="bg-slate-100/90 border-b border-slate-200 px-4 py-2.5 font-bold text-slate-800 text-sm">
-                  Detail Profil
-                </div>
-                <div className="p-4 sm:p-5 space-y-3.5">
-                  {/* Nama * */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Nama <span className="text-red-500 font-bold">*</span>
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
-                        <User className="w-4 h-4" />
-                      </div>
-                      <input
-                        type="text"
-                        required
-                        value={nama}
-                        onChange={(e) => setNama(e.target.value)}
-                        placeholder="Masukkan nama lengkap Anda..."
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Jenis Kelamin * */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Jenis Kelamin <span className="text-red-500 font-bold">*</span>
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500 font-bold text-xs">
-                        ⚥
-                      </div>
-                      <select
-                        value={jenisKelamin}
-                        onChange={(e) => setJenisKelamin(e.target.value as 'Laki-Laki' | 'Perempuan')}
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 bg-white focus:outline-hidden"
-                      >
-                        <option value="Laki-Laki">Laki-Laki</option>
-                        <option value="Perempuan">Perempuan</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Nomor Hp. * */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Nomor Hp. <span className="text-red-500 font-bold">*</span>
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <input
-                        type="tel"
-                        required
-                        value={nomorHp}
-                        onChange={(e) => setNomorHp(e.target.value)}
-                        placeholder="Contoh: 081234567890"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Email * (Screenshot 2) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Email <span className="text-red-500 font-bold">*</span>
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
-                        <Mail className="w-4 h-4" />
-                      </div>
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="nama@email.com"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Password Baru * (Screenshot 2) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Password Baru <span className="text-red-500 font-bold">*</span>
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
-                        <Lock className="w-4 h-4" />
-                      </div>
-                      <input
-                        type={showRegPassword ? 'text' : 'password'}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••••••"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowRegPassword(!showRegPassword)}
-                        className="px-3 text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center focus:outline-hidden"
-                        title={showRegPassword ? 'Sembunyikan password' : 'Lihat password'}
-                      >
-                        {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Ulangi Password * (Screenshot 2) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Ulangi Password <span className="text-red-500 font-bold">*</span>
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
-                        <Lock className="w-4 h-4" />
-                      </div>
-                      <input
-                        type={showRegConfirmPassword ? 'text' : 'password'}
-                        required
-                        value={ulangiPassword}
-                        onChange={(e) => setUlangiPassword(e.target.value)}
-                        placeholder="••••••••••••"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
-                        className="px-3 text-slate-400 hover:text-slate-600 cursor-pointer flex items-center justify-center focus:outline-hidden"
-                        title={showRegConfirmPassword ? 'Sembunyikan password' : 'Lihat password'}
-                      >
-                        {showRegConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Pekerjaan Anda * (Screenshot 3) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Pekerjaan Anda <span className="text-red-500 font-bold">*</span>
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
-                        <Wrench className="w-4 h-4" />
-                      </div>
-                      <input
-                        type="text"
-                        required
-                        value={pekerjaan}
-                        onChange={(e) => setPekerjaan(e.target.value)}
-                        placeholder="Contoh: Kreator Konten, Mahasiswa, Wiraswasta"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-                </div>
+        {/* =========================================================================
+           VIEW 1: REGISTRATION FLOW WITH STRICT 2-STEP ORIENTATION GATEKEEPING
+           ========================================================================= */}
+        {mode === 'register' && (
+          <div>
+            {/* Step Stepper Header */}
+            <div className="bg-slate-100 border-b border-slate-200 px-6 py-2.5 flex items-center justify-between text-xs font-bold">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
+                    regStep === 1
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  }`}
+                >
+                  1
+                </span>
+                <span className={regStep === 1 ? 'text-slate-900 font-black' : 'text-slate-500'}>
+                  Isi Data Diri &amp; Akun Medsos
+                </span>
               </div>
 
-              {/* Section 2: Nama Akun Sosmed/Marketplace Anda (Header exactly like Screenshot 3) */}
-              <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-xs">
-                <div className="bg-slate-100/90 border-b border-slate-200 px-4 py-2.5">
-                  <h3 className="font-bold text-slate-800 text-sm">
-                    Nama Akun Sosmed/Marketplace Anda
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Nama akun yang Anda gunakan di sosmed/marketplace untuk menulis komentar/follow.{' '}
-                    <span className="text-emerald-700 font-semibold cursor-pointer underline">
-                      Lihat contoh
-                    </span>
-                  </p>
-                </div>
+              <ArrowRight className="w-4 h-4 text-slate-400" />
 
-                <div className="p-4 sm:p-5 space-y-4">
-                  {/* 1. Instagram */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-start gap-2 sm:gap-4">
-                    <div className="sm:col-span-3 sm:text-right pt-2">
-                      <label className="text-xs sm:text-sm font-medium text-slate-700">Instagram</label>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
+                    regStep === 2
+                      ? 'bg-amber-500 text-slate-950'
+                      : 'bg-slate-200 text-slate-500'
+                  }`}
+                >
+                  2
+                </span>
+                <span className={regStep === 2 ? 'text-amber-950 font-black' : 'text-slate-500'}>
+                  Misi Wajib: Subscribe, Follow &amp; Join WA
+                </span>
+              </div>
+            </div>
+
+            {/* STEP 1: FILL PROFILE & MEMBER SOCIALS */}
+            {regStep === 1 && (
+              <form onSubmit={handleProceedToStep2} className="max-h-[75vh] overflow-y-auto">
+                <div className="p-5 sm:p-7 space-y-6">
+                  {/* Section 1: Detail Profil */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                    <div className="bg-slate-100/90 border-b border-slate-200 px-4 py-2.5 font-bold text-slate-800 text-sm">
+                      Detail Profil Calon Anggota
                     </div>
-                    <div className="sm:col-span-9 space-y-1">
-                      <div className="flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                        <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                          <span className="text-pink-600 font-bold text-xs">📷 IG</span>
+                    <div className="p-4 sm:p-5 space-y-3.5">
+                      {/* Nama * */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
+                          Nama <span className="text-red-500 font-bold">*</span>
+                        </label>
+                        <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                          <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
+                            <User className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            required
+                            value={nama}
+                            onChange={(e) => setNama(e.target.value)}
+                            placeholder="Masukkan nama lengkap Anda..."
+                            className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
+                          />
                         </div>
-                        <input
-                          type="text"
-                          value={socials.instagram || ''}
-                          onChange={(e) => setSocials({ ...socials, instagram: e.target.value })}
-                          placeholder="@username"
-                          className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                        />
                       </div>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        Minimum post 30 dan followers 100
+
+                      {/* Jenis Kelamin * */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
+                          Jenis Kelamin <span className="text-red-500 font-bold">*</span>
+                        </label>
+                        <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                          <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500 font-bold text-xs">
+                            ⚥
+                          </div>
+                          <select
+                            value={jenisKelamin}
+                            onChange={(e) => setJenisKelamin(e.target.value as 'Laki-Laki' | 'Perempuan')}
+                            className="flex-1 px-3 py-2 text-sm text-slate-900 bg-white focus:outline-hidden"
+                          >
+                            <option value="Laki-Laki">Laki-Laki</option>
+                            <option value="Perempuan">Perempuan</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Nomor Hp. * */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
+                          Nomor Hp. / WhatsApp <span className="text-red-500 font-bold">*</span>
+                        </label>
+                        <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                          <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="tel"
+                            required
+                            value={nomorHp}
+                            onChange={(e) => setNomorHp(e.target.value)}
+                            placeholder="Contoh: 081234567890"
+                            className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Email * */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
+                          Email <span className="text-red-500 font-bold">*</span>
+                        </label>
+                        <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                          <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
+                            <Mail className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="nama@email.com"
+                            className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Password Baru * */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
+                          Password Baru <span className="text-red-500 font-bold">*</span>
+                        </label>
+                        <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                          <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
+                            <Lock className="w-4 h-4" />
+                          </div>
+                          <input
+                            type={showRegPassword ? 'text' : 'password'}
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••••••"
+                            className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowRegPassword(!showRegPassword)}
+                            className="px-3 text-slate-400 hover:text-slate-600 focus:outline-hidden"
+                          >
+                            {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Ulangi Password * */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
+                          Ulangi Password <span className="text-red-500 font-bold">*</span>
+                        </label>
+                        <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                          <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
+                            <Lock className="w-4 h-4" />
+                          </div>
+                          <input
+                            type={showRegConfirmPassword ? 'text' : 'password'}
+                            required
+                            value={ulangiPassword}
+                            onChange={(e) => setUlangiPassword(e.target.value)}
+                            placeholder="••••••••••••"
+                            className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                            className="px-3 text-slate-400 hover:text-slate-600 focus:outline-hidden"
+                          >
+                            {showRegConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Pekerjaan Anda * */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
+                          Pekerjaan Anda <span className="text-red-500 font-bold">*</span>
+                        </label>
+                        <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                          <div className="px-3 bg-slate-100 border-r border-slate-300 flex items-center justify-center text-slate-500">
+                            <Wrench className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            required
+                            value={pekerjaan}
+                            onChange={(e) => setPekerjaan(e.target.value)}
+                            placeholder="Contoh: Kreator Konten, Mahasiswa, Wiraswasta"
+                            className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 2: Nama Akun Sosmed/Marketplace Anda */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+                    <div className="bg-slate-100/90 border-b border-slate-200 px-4 py-2.5">
+                      <h3 className="font-bold text-slate-800 text-sm">
+                        Nama Akun Sosmed Anda (Minimal 1 Platform)
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Digunakan untuk saling follow dan verifikasi gotong royong antar sesama member.
                       </p>
                     </div>
-                  </div>
 
-                  {/* 2. YouTube */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Youtube
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                        <span className="text-red-600 font-bold text-xs">▶ YT</span>
+                    <div className="p-4 sm:p-5 space-y-4">
+                      {/* Instagram */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-start gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 sm:text-right text-xs sm:text-sm font-medium text-slate-700 pt-2">
+                          Instagram
+                        </label>
+                        <div className="sm:col-span-9 space-y-1">
+                          <div className="flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                            <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
+                              <span className="text-pink-600 font-bold text-xs">📷 IG</span>
+                            </div>
+                            <input
+                              type="text"
+                              value={socials.instagram || ''}
+                              onChange={(e) => setSocials({ ...socials, instagram: e.target.value })}
+                              placeholder="@username"
+                              className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <input
-                        type="text"
-                        value={socials.youtube || ''}
-                        onChange={(e) => setSocials({ ...socials, youtube: e.target.value })}
-                        placeholder="Nama Channel atau @handle"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
 
-                  {/* 3. Google Map */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Google Map
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                        <span className="text-blue-600 font-bold text-xs">📍 Maps</span>
+                      {/* YouTube */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
+                          YouTube
+                        </label>
+                        <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                          <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
+                            <span className="text-red-600 font-bold text-xs">▶ YT</span>
+                          </div>
+                          <input
+                            type="text"
+                            value={socials.youtube || ''}
+                            onChange={(e) => setSocials({ ...socials, youtube: e.target.value })}
+                            placeholder="Nama Channel atau @handle"
+                            className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
+                          />
+                        </div>
                       </div>
-                      <input
-                        type="text"
-                        value={socials.googleMap || ''}
-                        onChange={(e) => setSocials({ ...socials, googleMap: e.target.value })}
-                        placeholder="Nama Profil Google Review / Local Guide"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
 
-                  {/* 4. Facebook */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Facebook
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                        <span className="text-[#1877F2] font-bold text-xs">f FB</span>
+                      {/* TikTok */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
+                          TikTok
+                        </label>
+                        <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                          <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
+                            <span className="text-slate-900 font-bold text-xs">♪ TikTok</span>
+                          </div>
+                          <input
+                            type="text"
+                            value={socials.tiktok || ''}
+                            onChange={(e) => setSocials({ ...socials, tiktok: e.target.value })}
+                            placeholder="@username_tiktok"
+                            className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
+                          />
+                        </div>
                       </div>
-                      <input
-                        type="text"
-                        value={socials.facebook || ''}
-                        onChange={(e) => setSocials({ ...socials, facebook: e.target.value })}
-                        placeholder="Nama Akun Profil Facebook"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
 
-                  {/* 5. Google Playstore */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Google Playstore
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                        <span className="text-teal-600 font-bold text-xs">▶ Play</span>
+                      {/* Facebook */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
+                        <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
+                          Facebook
+                        </label>
+                        <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
+                          <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
+                            <span className="text-[#1877F2] font-bold text-xs">f FB</span>
+                          </div>
+                          <input
+                            type="text"
+                            value={socials.facebook || ''}
+                            onChange={(e) => setSocials({ ...socials, facebook: e.target.value })}
+                            placeholder="Nama Akun Profil Facebook"
+                            className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
+                          />
+                        </div>
                       </div>
-                      <input
-                        type="text"
-                        value={socials.googlePlaystore || ''}
-                        onChange={(e) => setSocials({ ...socials, googlePlaystore: e.target.value })}
-                        placeholder="Nama Akun Reviewer Playstore"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 6. Threads */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Threads
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                        <span className="text-black font-bold text-xs">@ Threads</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={socials.threads || ''}
-                        onChange={(e) => setSocials({ ...socials, threads: e.target.value })}
-                        placeholder="@username_threads"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 7. Tiktok */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Tiktok
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                        <span className="text-black font-bold text-xs">♪ TikTok</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={socials.tiktok || ''}
-                        onChange={(e) => setSocials({ ...socials, tiktok: e.target.value })}
-                        placeholder="@username_tiktok"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 8. LinkedIn */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      LinkedIn
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                        <span className="text-[#0A66C2] font-bold text-xs">in LinkedIn</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={socials.linkedIn || ''}
-                        onChange={(e) => setSocials({ ...socials, linkedIn: e.target.value })}
-                        placeholder="URL atau Username LinkedIn"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 9. Spotify */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Spotify
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                        <span className="text-[#1ED760] font-bold text-xs">● Spotify</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={socials.spotify || ''}
-                        onChange={(e) => setSocials({ ...socials, spotify: e.target.value })}
-                        placeholder="Nama Akun Spotify / Link Podcast"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 10. Detik.com */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      Detik.com
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                        <span className="text-blue-700 font-black text-xs">d Detik</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={socials.detik || ''}
-                        onChange={(e) => setSocials({ ...socials, detik: e.target.value })}
-                        placeholder="Username Komentator DetikConnect"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 11. X (Twitter) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-2 sm:gap-4">
-                    <label className="sm:col-span-3 text-xs sm:text-sm font-medium text-slate-700 sm:text-right">
-                      X
-                    </label>
-                    <div className="sm:col-span-9 flex rounded-md shadow-2xs border border-slate-300 focus-within:border-emerald-500 overflow-hidden bg-white">
-                      <div className="px-3 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
-                        <span className="text-black font-black text-xs">𝕏 Twitter</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={socials.xTwitter || ''}
-                        onChange={(e) => setSocials({ ...socials, xTwitter: e.target.value })}
-                        placeholder="@username_x"
-                        className="flex-1 px-3 py-2 text-sm text-slate-900 focus:outline-hidden"
-                      />
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Bottom Actions Bar */}
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Data tersimpan aman &amp; otomatis terdaftar sebagai Member Aktif TBK.</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs sm:text-sm hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-7 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-60"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>{isSubmitting ? 'MENDAFTARKAN KE SERVER...' : 'DAFTAR SEKARANG'}</span>
-                </button>
-              </div>
-            </div>
-          </form>
-        ) : (
-          /* =========================================================================
-             LOGIN VIEW
-             ========================================================================= */
+                {/* Bottom Action Bar for Step 1 */}
+                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Lanjut ke Tahap 2 untuk menyelesaikan misi wajib sinergi Admin.</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs sm:text-sm hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+                    >
+                      <span>Lanjut ke Tahap 2: Misi Wajib Medsos &amp; WA Admin</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 2: STRICT MANDATORY ORIENTATION (YouTube 2 Mins, Follow IG, Join WA) */}
+            {regStep === 2 && (
+              <form onSubmit={handleFinalizeRegister} className="max-h-[75vh] overflow-y-auto">
+                <div className="p-5 sm:p-7 space-y-5">
+                  {/* Strict Gatekeeping Warning Box */}
+                  <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 space-y-2">
+                    <div className="flex items-center gap-2 text-amber-950 font-black text-xs sm:text-sm">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                      <span>PERHATIAN: Akses Masuk Website Terkunci Sebelum Misi Selesai</span>
+                    </div>
+                    <p className="text-xs text-amber-900 leading-relaxed">
+                      Halo <strong>{nama}</strong>! Sesuai prinsip saling gotong royong Komunitas TBK,{' '}
+                      <strong>
+                        Anda TIDAK DAPAT masuk ke website sebelum menyelesaikan misi follow, subscribe, dan join WhatsApp di bawah ini
+                      </strong>.
+                    </p>
+                  </div>
+
+                  {/* 1. YouTube Watch Requirement (Min 2 Minutes for Anti-Spam Algorithm) */}
+                  <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3.5 bg-slate-50/60">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs shrink-0">
+                          <Youtube className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-black text-slate-900">
+                            1. Tonton Minimal 2 Menit &amp; Subscribe Channel YouTube Admin
+                          </h4>
+                          <p className="text-[11px] text-slate-500">
+                            Channel Admin: <strong className="text-slate-800">{rawYt}</strong>
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase shrink-0 ${
+                          isYoutubeRequirementMet
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-amber-100 text-amber-900 border border-amber-300'
+                        }`}
+                      >
+                        {isYoutubeRequirementMet ? '✅ Terpenuhi' : 'Wajib 2 Menit'}
+                      </span>
+                    </div>
+
+                    {/* Algoritma Note */}
+                    <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px] leading-relaxed">
+                      <strong>💡 Aturan Algoritma YouTube:</strong> Wajib menonton video lebih dari 2 menit
+                      sebelum menekan Subscribe agar subscriber tidak dideteksi sebagai bot / spam oleh YouTube.
+                    </div>
+
+                    {/* Timer Box */}
+                    <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-amber-500" />
+                          <span>Waktu Menonton Video YouTube:</span>
+                        </span>
+                        <span className="font-mono font-black text-sm text-slate-900">
+                          {formatTime(secondsWatched)} / {formatTime(REQUIRED_WATCH_SECONDS)}
+                        </span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            isYoutubeRequirementMet ? 'bg-emerald-500' : 'bg-amber-500'
+                          }`}
+                          style={{ width: `${watchPercentage}%` }}
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsTimerRunning(!isTimerRunning)}
+                            className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                              isTimerRunning
+                                ? 'bg-amber-100 hover:bg-amber-200 text-amber-900'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            }`}
+                          >
+                            {isTimerRunning ? (
+                              <>
+                                <Pause className="w-3.5 h-3.5" />
+                                <span>Jeda Timer</span>
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-3.5 h-3.5" />
+                                <span>{secondsWatched > 0 ? 'Lanjutkan Timer' : 'Mulai Hitung Waktu Tonton'}</span>
+                              </>
+                            )}
+                          </button>
+
+                          {secondsWatched > 0 && !isYoutubeRequirementMet && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsTimerRunning(false);
+                                setSecondsWatched(0);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                              title="Reset Waktu"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Direct YouTube Link */}
+                        <a
+                          href={ytUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => {
+                            setHasOpenedYoutube(true);
+                            if (!isTimerRunning && secondsWatched < REQUIRED_WATCH_SECONDS) {
+                              setIsTimerRunning(true);
+                            }
+                          }}
+                          className="px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all"
+                        >
+                          <span>Buka Video di YouTube</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+
+                      {/* Checkbox confirmation */}
+                      <label className="flex items-center gap-2 pt-2 border-t border-slate-100 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={youtubeConfirmed}
+                          onChange={(e) => {
+                            setYoutubeConfirmed(e.target.checked);
+                            if (e.target.checked && secondsWatched < REQUIRED_WATCH_SECONDS) {
+                              setSecondsWatched(REQUIRED_WATCH_SECONDS);
+                            }
+                          }}
+                          className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300"
+                        />
+                        <span className="text-xs text-slate-700 font-medium">
+                          Saya sudah menonton video minimal 2 menit dan telah menekan Subscribe di YouTube Admin.
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* 2. Instagram Follow */}
+                  <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3 bg-slate-50/60">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-bold text-xs shrink-0">
+                          <Instagram className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-black text-slate-900">
+                            2. Follow Akun Instagram Official Admin
+                          </h4>
+                          <p className="text-[11px] text-slate-500">
+                            Akun: <strong className="text-slate-800">{rawIg}</strong>
+                          </p>
+                        </div>
+                      </div>
+
+                      <a
+                        href={igUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => {
+                          setHasOpenedInstagram(true);
+                          setInstagramConfirmed(true);
+                        }}
+                        className="px-3.5 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all"
+                      >
+                        <span>Buka &amp; Follow IG</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+
+                    <label className="flex items-center gap-2 pt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={instagramConfirmed}
+                        onChange={(e) => setInstagramConfirmed(e.target.checked)}
+                        className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 border-slate-300"
+                      />
+                      <span className="text-xs text-slate-700 font-medium">
+                        Saya sudah mem-follow akun Instagram resmi Admin (<strong>{rawIg}</strong>).
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* 3. Join WhatsApp Group (User Request 4) */}
+                  <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3 bg-slate-50/60">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0">
+                          <span className="text-base">💬</span>
+                        </div>
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-black text-slate-900">
+                            3. Gabung Grup WhatsApp Resmi Komunitas TBK
+                          </h4>
+                          <p className="text-[11px] text-slate-500">
+                            Pusat jadwal koordinasi penayangan konten &amp; komentar gotong royong
+                          </p>
+                        </div>
+                      </div>
+
+                      <a
+                        href={waUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => {
+                          setHasOpenedWhatsapp(true);
+                          setWhatsappConfirmed(true);
+                        }}
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all"
+                      >
+                        <span>Gabung WhatsApp</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+
+                    <label className="flex items-center gap-2 pt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={whatsappConfirmed}
+                        onChange={(e) => setWhatsappConfirmed(e.target.checked)}
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                      />
+                      <span className="text-xs text-slate-700 font-medium">
+                        Saya sudah menekan tombol di atas dan bergabung ke Grup WhatsApp resmi Komunitas TBK.
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Optional Step 4: TikTok if configured */}
+                  {ttUrl && (
+                    <div className="border border-slate-200 rounded-2xl p-4 space-y-2.5 bg-slate-50/60">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">♪</span>
+                          <span className="text-xs font-bold text-slate-800">
+                            Follow TikTok Admin (Opsional): {rawTt}
+                          </span>
+                        </div>
+                        <a
+                          href={ttUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => {
+                            setHasOpenedTiktok(true);
+                            setTiktokConfirmed(true);
+                          }}
+                          className="px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1"
+                        >
+                          <span>Follow TikTok</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Live Status Gating Summary Card */}
+                  <div
+                    className={`p-4 rounded-2xl border transition-all ${
+                      canFinalizeRegistration
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                        : 'bg-amber-50 border-amber-300 text-amber-950'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-black uppercase tracking-wide flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>Status Kunci Akses Masuk Website:</span>
+                      </span>
+                      <span
+                        className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase ${
+                          canFinalizeRegistration
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-amber-200 text-amber-900'
+                        }`}
+                      >
+                        {canFinalizeRegistration ? '🔓 Akses Terbuka' : '🔒 Terkunci (Selesaikan 3 Syarat)'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-medium">
+                      <div className="flex items-center gap-1.5">
+                        {isYoutubeRequirementMet ? (
+                          <span className="text-emerald-700 font-bold">✅ 1. YouTube (Min 2 Mnt)</span>
+                        ) : (
+                          <span className="text-amber-800 font-semibold">⏳ 1. YouTube (Min 2 Mnt)</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {instagramConfirmed ? (
+                          <span className="text-emerald-700 font-bold">✅ 2. Follow Instagram</span>
+                        ) : (
+                          <span className="text-amber-800 font-semibold">⏳ 2. Follow Instagram</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {whatsappConfirmed ? (
+                          <span className="text-emerald-700 font-bold">✅ 3. Gabung Grup WA</span>
+                        ) : (
+                          <span className="text-amber-800 font-semibold">⏳ 3. Gabung Grup WA</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Action Bar for Step 2 */}
+                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRegStep(1)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs sm:text-sm hover:bg-slate-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Kembali Ubah Data Diri</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={!canFinalizeRegistration || isSubmitting}
+                    className={`px-7 py-3 rounded-xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer ${
+                      canFinalizeRegistration
+                        ? 'bg-amber-400 hover:bg-amber-500 text-slate-950 shadow-amber-400/30 active:scale-95'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                    }`}
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>
+                      {isSubmitting
+                        ? 'Mendaftarkan & Membuka Website...'
+                        : canFinalizeRegistration
+                        ? 'DAFTAR SEKARANG & BUKA AKSES WEBSITE →'
+                        : '🔒 Selesaikan 3 Misi Wajib di Atas untuk Masuk ke Website'}
+                    </span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* =========================================================================
+           VIEW 2: STANDARD USER / MEMBER LOGIN
+           ========================================================================= */}
+        {mode === 'login' && (
           <div className="p-6 sm:p-8 space-y-6">
             <form onSubmit={handleLoginSubmit} className="space-y-4 max-w-md mx-auto">
               <div className="text-center space-y-1">
-                <h3 className="text-xl font-black text-slate-900">Masuk ke Akun TBK</h3>
+                <h3 className="text-xl font-black text-slate-900">Masuk Akun Member TBK</h3>
                 <p className="text-xs text-slate-500">
-                  Gunakan Email atau Nama yang telah Anda daftarkan.
+                  Masukkan Nama, Alamat Email, atau Nomor HP yang telah terdaftar.
                 </p>
               </div>
 
@@ -707,13 +1166,10 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                     required
                     value={loginIdentifier}
                     onChange={(e) => setLoginIdentifier(e.target.value)}
-                    placeholder="Masukkan Nama, Email, atau No. HP Anda"
+                    placeholder="Contoh: Budi Santoso atau nama@email.com"
                     className="flex-1 px-3 py-2.5 text-sm text-slate-900 focus:outline-hidden"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Anda dapat menggunakan Nama lengkap, alamat Email, atau No. HP yang didaftarkan.
-                </p>
               </div>
 
               <div>
@@ -752,19 +1208,19 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
               </button>
             </form>
 
-            {/* Quick Login with Clear Separation between Admin and User */}
+            {/* Quick Test Login Accounts */}
             <div className="pt-5 border-t border-slate-200">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">
-                Pilihan Akun Uji Coba (Pemisahan Akun Admin &amp; User):
+                Pilihan Akun Uji Coba:
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Admin Account */}
-                {existingMembers.filter(m => m.userType === 'admin').slice(0, 1).map((m) => (
+                {existingMembers.filter((m) => m.userType === 'admin').slice(0, 1).map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => handleQuickLoginAs(m)}
-                    className="p-3.5 rounded-2xl border-2 border-amber-300 bg-amber-50/50 hover:bg-amber-100/70 transition-all flex items-center gap-3 text-left cursor-pointer group shadow-xs"
+                    className="p-3.5 rounded-2xl border-2 border-amber-300 bg-amber-50/50 hover:bg-amber-100/70 transition-all flex items-center gap-3 text-left cursor-pointer group shadow-2xs"
                   >
                     <img
                       src={m.avatar}
@@ -774,28 +1230,26 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <p className="text-xs font-black text-slate-900 truncate">
-                          {m.name}
-                        </p>
+                        <p className="text-xs font-black text-slate-900 truncate">{m.name}</p>
                         <span className="px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[9px] uppercase">
-                          Akun Admin
+                          Admin
                         </span>
                       </div>
                       <p className="text-[10px] text-amber-900 font-medium truncate mt-0.5">
                         ID: {m.email}
                       </p>
-                      <p className="text-[9px] text-slate-500">Akses penuh kelola tugas &amp; privasi anggota</p>
+                      <p className="text-[9px] text-slate-500">Akses penuh kelola member &amp; tugas</p>
                     </div>
                   </button>
                 ))}
 
                 {/* User Account */}
-                {existingMembers.filter(m => m.userType === 'user').slice(0, 1).map((m) => (
+                {existingMembers.filter((m) => m.userType === 'user').slice(0, 1).map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => handleQuickLoginAs(m)}
-                    className="p-3.5 rounded-2xl border-2 border-emerald-300 bg-emerald-50/50 hover:bg-emerald-100/70 transition-all flex items-center gap-3 text-left cursor-pointer group shadow-xs"
+                    className="p-3.5 rounded-2xl border-2 border-emerald-300 bg-emerald-50/50 hover:bg-emerald-100/70 transition-all flex items-center gap-3 text-left cursor-pointer group shadow-2xs"
                   >
                     <img
                       src={m.avatar}
@@ -805,31 +1259,177 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <p className="text-xs font-black text-slate-900 truncate">
-                          {m.name}
-                        </p>
+                        <p className="text-xs font-black text-slate-900 truncate">{m.name}</p>
                         <span className="px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900 font-black text-[9px] uppercase">
-                          Akun User
+                          User
                         </span>
                       </div>
                       <p className="text-[10px] text-emerald-800 font-medium truncate mt-0.5">
                         ID: {m.email}
                       </p>
-                      <p className="text-[9px] text-slate-500">Member reguler, privasi data aman terlindungi</p>
+                      <p className="text-[9px] text-slate-500">Member reguler gotong royong</p>
                     </div>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="text-center pt-2">
-              <span className="text-xs text-slate-500">Belum punya akun? </span>
+            <div className="text-center pt-2 flex items-center justify-between text-xs">
               <button
                 type="button"
                 onClick={() => setMode('register')}
-                className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer"
+                className="font-bold text-emerald-700 hover:underline cursor-pointer"
               >
-                Daftar Akun Baru Sekarang →
+                ← Belum punya akun? Daftar Sekarang
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMode('admin_login')}
+                className="font-bold text-amber-700 hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>👑 Login Khusus Admin →</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+           VIEW 3: DEDICATED ADMIN LOGIN WITH CLEAR ROLE EXPLANATION (User Request 2)
+           ========================================================================= */}
+        {mode === 'admin_login' && (
+          <div className="p-6 sm:p-8 space-y-6">
+            {/* Admin Header Banner */}
+            <div className="p-5 rounded-2xl bg-linear-to-r from-amber-500/10 via-amber-400/20 to-amber-500/10 border-2 border-amber-300">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-lg shadow-sm">
+                  👑
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">
+                    Portal Login Khusus Administrator TBK
+                  </h3>
+                  <p className="text-xs text-amber-900 font-medium">
+                    Akses kontrol penuh pengelolaan sistem, verifikasi member &amp; pengaturan medsos resmi.
+                  </p>
+                </div>
+              </div>
+
+              {/* Clear Role Comparison Card */}
+              <div className="mt-4 pt-3 border-t border-amber-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-xl bg-white border border-amber-200 shadow-2xs">
+                  <div className="flex items-center gap-1.5 font-black text-amber-950 mb-1">
+                    <span>👑 Akun Administrator:</span>
+                  </div>
+                  <ul className="space-y-1 text-[11px] text-slate-600 list-disc list-inside">
+                    <li>Username: <strong>admin</strong> atau <strong>haihaihai9191@gmail.com</strong></li>
+                    <li>Password: <strong>password123</strong></li>
+                    <li>Menu khusus <strong>👑 Monitor Tugas Member</strong></li>
+                    <li>Fitur <strong>EDIT &amp; HAPUS MEMBER</strong> aktif</li>
+                    <li>Atur link medsos resmi &amp; verifikasi bukti YouTube</li>
+                  </ul>
+                </div>
+
+                <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                  <div className="flex items-center gap-1.5 font-black text-slate-900 mb-1">
+                    <span>👤 Akun User / Member:</span>
+                  </div>
+                  <ul className="space-y-1 text-[11px] text-slate-600 list-disc list-inside">
+                    <li>Dibuat melalui pendaftaran mandiri</li>
+                    <li>Wajib nonton YouTube 2 menit, follow IG &amp; join WA</li>
+                    <li>Hanya melihat papan tugas gotong royong komunitas</li>
+                    <li><strong>Tidak bisa edit/hapus</strong> data anggota lain</li>
+                    <li>Privasi data terlindungi aman</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Admin Login Form */}
+            <form onSubmit={handleAdminLoginSubmit} className="space-y-4 max-w-md mx-auto">
+              <div>
+                <label className="block text-xs font-black text-amber-950 uppercase mb-1">
+                  Username / Email Administrator *
+                </label>
+                <div className="flex rounded-md shadow-2xs border border-amber-300 focus-within:border-amber-500 overflow-hidden bg-white">
+                  <div className="px-3 bg-amber-100/60 border-r border-amber-300 flex items-center justify-center text-amber-800">
+                    <KeyRound className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={adminIdentifier}
+                    onChange={(e) => setAdminIdentifier(e.target.value)}
+                    placeholder="admin atau haihaihai9191@gmail.com"
+                    className="flex-1 px-3 py-2.5 text-sm text-slate-900 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-amber-950 uppercase mb-1">
+                  Password Administrator *
+                </label>
+                <div className="flex rounded-md shadow-2xs border border-amber-300 focus-within:border-amber-500 overflow-hidden bg-white">
+                  <div className="px-3 bg-amber-100/60 border-r border-amber-300 flex items-center justify-center text-amber-800">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showAdminPassword ? 'text' : 'password'}
+                    required
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="flex-1 px-3 py-2.5 text-sm text-slate-900 focus:outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword(!showAdminPassword)}
+                    className="px-3 text-slate-400 hover:text-slate-600 focus:outline-hidden"
+                    title={showAdminPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  >
+                    {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* 1-Click Quick Fill Button for testing */}
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminIdentifier('admin');
+                  setAdminPassword('password123');
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-amber-100/70 hover:bg-amber-200/80 text-amber-950 font-bold text-xs border border-amber-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>Klik Di Sini: Isi Kredensial Default Admin (Username: admin | Pass: password123)</span>
+              </button>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 mt-2"
+              >
+                <span>👑</span>
+                <span>MASUK SEBAGAI ADMINISTRATOR</span>
+              </button>
+            </form>
+
+            <div className="text-center pt-2 flex items-center justify-between text-xs">
+              <button
+                type="button"
+                onClick={() => setMode('login')}
+                className="font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                ← Kembali ke Login Member Reguler
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMode('register')}
+                className="font-bold text-emerald-700 hover:underline cursor-pointer"
+              >
+                Daftar Akun Baru →
               </button>
             </div>
           </div>

@@ -80,6 +80,7 @@ export interface MemberSocialAccounts {
   spotify?: string;
   detik?: string;
   xTwitter?: string;
+  whatsappGroup?: string;
 }
 
 export interface SocialFollowProof {
@@ -90,6 +91,7 @@ export interface SocialFollowProof {
   instagramFollowed?: boolean;
   tiktokFollowed?: boolean;
   facebookFollowed?: boolean;
+  whatsappJoined?: boolean;
   allCompleted?: boolean;
   completedAt?: string;
 }
@@ -926,6 +928,13 @@ async function startServer() {
           completed: false,
         });
       }
+      if (officialSocials.whatsappGroup) {
+        orientationSubtasks.push({
+          id: `sub-wa-${newMember.id}`,
+          title: `Gabung Grup WhatsApp Resmi Komunitas TBK`,
+          completed: false,
+        });
+      }
       if (orientationSubtasks.length === 0) {
         orientationSubtasks.push({
           id: `sub-gen-${newMember.id}`,
@@ -1061,6 +1070,7 @@ async function startServer() {
       instagramConfirmed,
       tiktokConfirmed,
       facebookConfirmed,
+      whatsappConfirmed,
     } = req.body;
 
     const member = teamMembers.find((m) => m.id === memberId);
@@ -1073,7 +1083,7 @@ async function startServer() {
              (t.isOfficialMandatory || t.tags?.includes('WajibAdmin'))
     );
 
-    const isFullyDone = !!(youtubeConfirmed && instagramConfirmed);
+    const isFullyDone = !!(youtubeConfirmed && instagramConfirmed && (whatsappConfirmed !== false));
 
     memberTasks.forEach((t) => {
       t.status = isFullyDone ? 'done' : 'in_progress';
@@ -1086,6 +1096,9 @@ async function startServer() {
         }
         if (s.title.toLowerCase().includes('instagram')) {
           return { ...s, completed: !!instagramConfirmed };
+        }
+        if (s.title.toLowerCase().includes('whatsapp')) {
+          return { ...s, completed: !!whatsappConfirmed };
         }
         if (s.title.toLowerCase().includes('tiktok')) {
           return { ...s, completed: !!tiktokConfirmed };
@@ -1103,7 +1116,7 @@ async function startServer() {
         userId: member.id,
         userName: member.name,
         userAvatar: member.avatar,
-        text: `[Konfirmasi Orientasi Member] Menonton YouTube: ${watchMins}m ${watchSecs}s (${youtubeConfirmed ? 'Valid Algoritma YT' : 'Belum'}), Follow IG: ${instagramConfirmed ? 'Sudah' : 'Belum'}.`,
+        text: `[Konfirmasi Orientasi Member] Menonton YouTube: ${watchMins}m ${watchSecs}s (${youtubeConfirmed ? 'Valid Algoritma YT' : 'Belum'}), Follow IG: ${instagramConfirmed ? 'Sudah' : 'Belum'}, Join WhatsApp: ${whatsappConfirmed ? 'Sudah' : 'Belum'}.`,
         createdAt: new Date().toISOString(),
       });
 
@@ -1123,6 +1136,7 @@ async function startServer() {
       instagramFollowed: !!instagramConfirmed,
       tiktokFollowed: !!tiktokConfirmed,
       facebookFollowed: !!facebookConfirmed,
+      whatsappJoined: !!whatsappConfirmed,
       allCompleted: isFullyDone,
       completedAt: isFullyDone ? new Date().toISOString() : undefined,
     };
@@ -1139,7 +1153,7 @@ async function startServer() {
     const adminNotif: NotificationItem = {
       id: `notif-orient-${Date.now()}`,
       title: '📹 Bukti Orientasi & Follow Diterima!',
-      message: `${member.name} telah menonton video YouTube selama ${Math.floor((youtubeWatchedSeconds || 0) / 60)} menit & mengonfirmasi follow akun resmi Admin.`,
+      message: `${member.name} telah menonton video YouTube selama ${Math.floor((youtubeWatchedSeconds || 0) / 60)} menit, follow Instagram & gabung WhatsApp resmi Admin.`,
       type: 'task_done',
       read: false,
       createdAt: new Date().toISOString(),
@@ -1151,6 +1165,31 @@ async function startServer() {
       success: true,
       message: 'Konfirmasi orientasi berhasil disimpan!',
       member,
+      tasks,
+    });
+  });
+
+  // DELETE Team Member
+  app.delete('/api/team/:id', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const memberIndex = teamMembers.findIndex((m) => m.id === id);
+    if (memberIndex === -1) {
+      return res.status(404).json({ success: false, message: 'Member tidak ditemukan' });
+    }
+    const deleted = teamMembers[memberIndex];
+    teamMembers.splice(memberIndex, 1);
+
+    // Also remove or detach tasks assigned to this member
+    tasks = tasks.filter((t) => t.assigneeId !== id && !t.id.includes(id));
+
+    saveDatabase();
+    broadcastEvent('team_updated', teamMembers);
+    broadcastEvent('sync_completed', { tasks, teamMembers });
+
+    res.json({
+      success: true,
+      message: `Member ${deleted.name} berhasil dihapus dari sistem`,
+      teamMembers,
       tasks,
     });
   });

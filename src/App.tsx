@@ -12,6 +12,8 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { AuthRegistrationModal } from './components/AuthRegistrationModal';
 import { AdminOfficialSocialsModal } from './components/AdminOfficialSocialsModal';
 import { PostRegisterOrientationModal } from './components/PostRegisterOrientationModal';
+import { EditMemberModal } from './components/EditMemberModal';
+import { DeleteMemberConfirmModal } from './components/DeleteMemberConfirmModal';
 import { NotificationItem, ReferralRecord, Task, TaskStatus, TeamMember, MemberSocialAccounts, SocialFollowProof } from './types';
 import { syncManager } from './lib/syncManager';
 import { playTaskDoneChime, playLevelUpFanfare, playNotificationTone } from './lib/audio';
@@ -26,15 +28,23 @@ export default function App() {
   const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('register');
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'admin_login'>('register');
   const [isAdminSocialsModalOpen, setIsAdminSocialsModalOpen] = useState(false);
   const [isOrientationModalOpen, setIsOrientationModalOpen] = useState(false);
   const [orientationMember, setOrientationMember] = useState<TeamMember | null>(null);
+
+  // Edit & Delete Member States (User Request 3)
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [isEditMemberModalOpen, setIsEditMemberModalOpen] = useState(false);
+  const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null);
+  const [isDeleteMemberModalOpen, setIsDeleteMemberModalOpen] = useState(false);
+
   const [officialAdminSocials, setOfficialAdminSocials] = useState<MemberSocialAccounts>({
     instagram: '@adrian_andrew.id',
     youtube: 'https://youtube.com/@adrian_andrew.id',
     tiktok: '@adrianandrew_tiktok',
     facebook: 'Adrian Andrew ID',
+    whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
   });
 
   const [currentUser, setCurrentUser] = useState<TeamMember>({
@@ -710,7 +720,112 @@ export default function App() {
     }
   };
 
+  // Member Edit & Delete Handlers (User Request 3)
+  const handleOpenEditMember = (member: TeamMember) => {
+    setEditingMember(member);
+    setIsEditMemberModalOpen(true);
+  };
+
+  const handleSaveEditedMember = async (updated: TeamMember) => {
+    try {
+      const res = await fetch(`/api/team/${updated.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.teamMembers) {
+          setTeamMembers(data.teamMembers);
+          syncManager.setCachedTeam(data.teamMembers);
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal simpan edit member ke server:', e);
+    }
+
+    setTeamMembers((prev) => {
+      const next = prev.map((m) => (m.id === updated.id ? updated : m));
+      syncManager.setCachedTeam(next);
+      return next;
+    });
+
+    if (currentUser.id === updated.id) {
+      setCurrentUser(updated);
+    }
+
+    const editNotif: NotificationItem = {
+      id: `notif-edit-${Date.now()}`,
+      title: '✏️ Data Member Diperbarui',
+      message: `Data member ${updated.name} (${updated.email}) berhasil diperbarui.`,
+      type: 'task_done',
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications((prev) => [editNotif, ...prev]);
+  };
+
+  const handleOpenDeleteMember = (memberId: string) => {
+    const target = teamMembers.find((m) => m.id === memberId);
+    if (!target) return;
+    if (target.userType === 'admin' || target.id === 'user-1') {
+      alert('Akun Administrator Utama tidak dapat dihapus.');
+      return;
+    }
+    setDeletingMember(target);
+    setIsDeleteMemberModalOpen(true);
+  };
+
+  const handleConfirmDeleteMember = async (memberId: string) => {
+    const target = deletingMember || teamMembers.find((m) => m.id === memberId);
+    try {
+      const res = await fetch(`/api/team/${memberId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.teamMembers) {
+          setTeamMembers(data.teamMembers);
+          syncManager.setCachedTeam(data.teamMembers);
+        }
+        if (data.tasks) {
+          setTasks(data.tasks);
+          syncManager.setCachedTasks(data.tasks);
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal hapus member di server:', e);
+    }
+
+    setTeamMembers((prev) => {
+      const next = prev.filter((m) => m.id !== memberId);
+      syncManager.setCachedTeam(next);
+      return next;
+    });
+    setTasks((prev) => prev.filter((t) => t.assigneeId !== memberId));
+
+    const delNotif: NotificationItem = {
+      id: `notif-del-${Date.now()}`,
+      title: '🗑️ Member Dihapus',
+      message: `Member ${target?.name || memberId} telah dihapus dari daftar Member Aktif.`,
+      type: 'security',
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications((prev) => [delNotif, ...prev]);
+    setIsDeleteMemberModalOpen(false);
+    setDeletingMember(null);
+  };
+
   const handleAuthSuccess = async (member: TeamMember, isRegistration?: boolean) => {
+    // If it's registration OR member has not completed orientation and is not admin:
+    if (isRegistration || (member.userType !== 'admin' && !member.socialFollowProof?.allCompleted)) {
+      setOrientationMember(member);
+      setIsOrientationModalOpen(true);
+      // Gated! User CANNOT proceed to board until orientation proof is fulfilled!
+      return;
+    }
+
     setCurrentUser(member);
     setIsLoggedIn(true);
 
@@ -754,30 +869,25 @@ export default function App() {
     const notif: NotificationItem = {
       id: `notif-${Date.now()}`,
       title: '🎉 Selamat Datang di Komunitas TBK!',
-      message: `Halo ${member.name}, akun Anda berhasil dibuat. Silakan selesaikan misi tontonan YouTube minimal 2 menit & follow akun resmi Admin.`,
+      message: `Halo ${member.name}, Anda berhasil masuk ke dashboard Komunitas TBK.`,
       type: 'level_up',
       read: false,
       createdAt: new Date().toISOString(),
     };
     setNotifications((prev) => [notif, ...prev]);
 
-    // If it's registration, trigger the post-registration social orientation modal
-    if (isRegistration) {
-      setOrientationMember(member);
-      setIsOrientationModalOpen(true);
-    }
-
     // Navigate to board
     setActiveTab('board');
   };
 
-  // Complete Orientation Mission (YouTube Watch Time & Follow)
+  // Complete Orientation Mission (YouTube Watch Time, Follow & WhatsApp Join)
   const handleCompleteOrientation = async (data: {
     youtubeWatchedSeconds: number;
     youtubeConfirmed: boolean;
     instagramConfirmed: boolean;
     tiktokConfirmed: boolean;
     facebookConfirmed: boolean;
+    whatsappConfirmed?: boolean;
   }) => {
     const targetMember = orientationMember || currentUser;
     try {
@@ -795,9 +905,7 @@ export default function App() {
           setTeamMembers((prev) =>
             prev.map((m) => (m.id === targetMember.id ? resData.member : m))
           );
-          if (currentUser.id === targetMember.id) {
-            setCurrentUser(resData.member);
-          }
+          setCurrentUser(resData.member);
         }
         if (resData.tasks) {
           setTasks(resData.tasks);
@@ -818,6 +926,7 @@ export default function App() {
         instagramFollowed: data.instagramConfirmed,
         tiktokFollowed: data.tiktokConfirmed,
         facebookFollowed: data.facebookConfirmed,
+        whatsappJoined: !!data.whatsappConfirmed,
         allCompleted: data.youtubeConfirmed && data.instagramConfirmed,
         completedAt: new Date().toISOString(),
       };
@@ -826,10 +935,12 @@ export default function App() {
           m.id === targetMember.id ? { ...m, socialFollowProof: updatedProof } : m
         )
       );
-      if (currentUser.id === targetMember.id) {
-        setCurrentUser((prev) => ({ ...prev, socialFollowProof: updatedProof }));
-      }
+      setCurrentUser((prev) => ({ ...prev, socialFollowProof: updatedProof }));
     }
+
+    setIsLoggedIn(true);
+    setIsOrientationModalOpen(false);
+    setActiveTab('board');
 
     playTaskDoneChime();
     confetti({
@@ -888,7 +999,11 @@ export default function App() {
 
         <PostRegisterOrientationModal
           isOpen={isOrientationModalOpen}
-          onClose={() => setIsOrientationModalOpen(false)}
+          onClose={() => {
+            setIsOrientationModalOpen(false);
+            setIsLoggedIn(false);
+            setActiveTab('landing');
+          }}
           currentUser={orientationMember || currentUser}
           officialSocials={officialAdminSocials}
           mandatoryTask={tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'))}
@@ -960,6 +1075,8 @@ export default function App() {
               setAuthModalMode('register');
               setIsAuthModalOpen(true);
             }}
+            onEditMember={handleOpenEditMember}
+            onDeleteMember={handleOpenDeleteMember}
           />
         )}
 
@@ -980,6 +1097,8 @@ export default function App() {
             onOpenAdminSocialsModal={() => setIsAdminSocialsModalOpen(true)}
             onVerifyMember={handleVerifyMember}
             onDeleteTask={handleDeleteTask}
+            onEditMember={handleOpenEditMember}
+            onDeleteMember={handleOpenDeleteMember}
           />
         )}
       </main>
@@ -1008,11 +1127,35 @@ export default function App() {
 
       <PostRegisterOrientationModal
         isOpen={isOrientationModalOpen}
-        onClose={() => setIsOrientationModalOpen(false)}
+        onClose={() => {
+          setIsOrientationModalOpen(false);
+          setIsLoggedIn(false);
+          setActiveTab('landing');
+        }}
         currentUser={orientationMember || currentUser}
         officialSocials={officialAdminSocials}
         mandatoryTask={tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'))}
         onCompleteOrientation={handleCompleteOrientation}
+      />
+
+      <EditMemberModal
+        isOpen={isEditMemberModalOpen}
+        onClose={() => {
+          setIsEditMemberModalOpen(false);
+          setEditingMember(null);
+        }}
+        member={editingMember}
+        onSave={handleSaveEditedMember}
+      />
+
+      <DeleteMemberConfirmModal
+        isOpen={isDeleteMemberModalOpen}
+        onClose={() => {
+          setIsDeleteMemberModalOpen(false);
+          setDeletingMember(null);
+        }}
+        member={deletingMember}
+        onConfirmDelete={handleConfirmDeleteMember}
       />
       <TaskModal
         isOpen={isTaskModalOpen}

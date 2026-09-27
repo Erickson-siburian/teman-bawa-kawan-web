@@ -27,6 +27,7 @@ import {
   Share2,
   Copy,
   Info,
+  Pencil,
 } from 'lucide-react';
 import { Task, TeamMember, TaskStatus, MemberSocialAccounts } from '../types';
 
@@ -41,6 +42,8 @@ interface AdminProgressMonitorProps {
   onOpenAdminSocialsModal?: () => void;
   onVerifyMember?: (memberId: string) => Promise<void> | void;
   onDeleteTask?: (taskId: string) => void;
+  onEditMember?: (member: TeamMember) => void;
+  onDeleteMember?: (memberId: string) => void;
 }
 
 export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
@@ -54,6 +57,8 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
   onOpenAdminSocialsModal,
   onVerifyMember,
   onDeleteTask,
+  onEditMember,
+  onDeleteMember,
 }) => {
   const [filterStatus, setFilterStatus] = useState<
     'all' | 'new_members' | 'social_verified' | 'social_pending' | 'completed' | 'in_progress' | 'unassigned'
@@ -911,6 +916,33 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
                           >
                             Lihat Detail →
                           </button>
+                          {onEditMember && (
+                            <button
+                              type="button"
+                              onClick={() => onEditMember(m)}
+                              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap"
+                              title="Edit Informasi Member"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Edit</span>
+                            </button>
+                          )}
+                          {onDeleteMember && (
+                            <button
+                              type="button"
+                              disabled={m.userType === 'admin' || m.id === 'user-1' || m.id === currentUser.id}
+                              onClick={() => onDeleteMember(m.id)}
+                              className="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                              title={
+                                m.userType === 'admin' || m.id === 'user-1'
+                                  ? 'Akun Admin Utama tidak dapat dihapus'
+                                  : 'Hapus Member dari Sistem'
+                              }
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Hapus</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

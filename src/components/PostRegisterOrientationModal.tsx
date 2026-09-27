@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  X,
   Youtube,
   Instagram,
   CheckCircle2,
@@ -10,10 +9,8 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Check,
   ShieldCheck,
-  ArrowRight,
-  Flame,
+  Lock,
 } from 'lucide-react';
 import { MemberSocialAccounts, Task, TeamMember } from '../types';
 
@@ -29,6 +26,7 @@ interface PostRegisterOrientationModalProps {
     instagramConfirmed: boolean;
     tiktokConfirmed: boolean;
     facebookConfirmed: boolean;
+    whatsappConfirmed: boolean;
   }) => Promise<void> | void;
 }
 
@@ -46,11 +44,13 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [hasOpenedYoutube, setHasOpenedYoutube] = useState(false);
   const [hasOpenedInstagram, setHasOpenedInstagram] = useState(false);
+  const [hasOpenedWhatsapp, setHasOpenedWhatsapp] = useState(false);
   const [hasOpenedTiktok, setHasOpenedTiktok] = useState(false);
 
   // Confirmation checkboxes
   const [youtubeConfirmed, setYoutubeConfirmed] = useState(false);
   const [instagramConfirmed, setInstagramConfirmed] = useState(false);
+  const [whatsappConfirmed, setWhatsappConfirmed] = useState(false);
   const [tiktokConfirmed, setTiktokConfirmed] = useState(false);
   const [facebookConfirmed, setFacebookConfirmed] = useState(false);
 
@@ -96,11 +96,19 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
   const rawIg = officialSocials.instagram || '@adrian_andrew.id';
   const igUrl = rawIg.startsWith('http') ? rawIg : `https://instagram.com/${rawIg.replace('@', '')}`;
 
+  const rawWa = officialSocials.whatsappGroup || 'https://chat.whatsapp.com/TBKOfficialCommunity';
+  const waUrl = rawWa.startsWith('http') ? rawWa : `https://chat.whatsapp.com/${rawWa}`;
+
   const rawTt = officialSocials.tiktok || '';
   const ttUrl = rawTt.startsWith('http') ? rawTt : rawTt ? `https://tiktok.com/@${rawTt.replace('@', '')}` : '';
 
+  // Gating requirement: must have watched YouTube (or verified) + Instagram follow + WhatsApp join
+  const canSubmit = isYoutubeRequirementMet && instagramConfirmed && whatsappConfirmed;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSubmit) return;
+
     setIsSubmitting(true);
     try {
       await onCompleteOrientation({
@@ -109,6 +117,7 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
         instagramConfirmed,
         tiktokConfirmed,
         facebookConfirmed,
+        whatsappConfirmed,
       });
       setIsSuccess(true);
       setTimeout(() => {
@@ -121,9 +130,9 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
       <div className="relative w-full max-w-2xl bg-white text-slate-900 rounded-3xl shadow-2xl border border-amber-200 overflow-hidden my-6 animate-in zoom-in-95 duration-200">
-        {/* Header */}
+        {/* Header (No close button: strictly mandatory gatekeeping) */}
         <div className="bg-linear-to-r from-amber-600 via-amber-700 to-amber-800 px-6 py-5 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-white backdrop-blur-xs">
@@ -137,18 +146,15 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
                 <span className="text-amber-200 text-xs font-semibold">TBK Sinergi</span>
               </div>
               <h3 className="text-base sm:text-lg font-black text-white leading-tight mt-0.5">
-                Sinergi Wajib Member: Subscribe &amp; Follow Akun Admin
+                Sinergi Wajib Member: Subscribe, Follow &amp; Join WA Admin
               </h3>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/20 text-white transition-colors cursor-pointer"
-            aria-label="Tutup"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/30 text-white font-bold text-xs border border-white/20">
+            <Lock className="w-3.5 h-3.5 text-amber-300" />
+            <span>Wajib Selesai</span>
+          </div>
         </div>
 
         {isSuccess ? (
@@ -160,19 +166,19 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
               Luar Biasa, {currentUser.name}! 🎉
             </h4>
             <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
-              Konfirmasi tontonan YouTube (minimal 2 menit) &amp; follow akun resmi Admin berhasil dicatat. Status Anda kini telah diperbarui ke panel Admin untuk verifikasi penuh.
+              Konfirmasi tontonan YouTube (minimal 2 menit), follow Instagram &amp; bergabung ke grup WhatsApp berhasil dicatat. Pintu masuk dashboard komunitas TBK kini telah terbuka!
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-5 sm:p-7 space-y-5 max-h-[78vh] overflow-y-auto">
-            {/* Intro Welcome Box */}
-            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-1.5">
+            {/* Intro Welcome Box with Gatekeeping Notice */}
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
               <p className="text-xs text-amber-950 font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Pendaftaran Akun Anda Berhasil!</span>
+                <span>Pendaftaran Akun Berhasil! Selesaikan 3 Misi Wajib di Bawah Ini</span>
               </p>
               <p className="text-[11px] text-amber-900 leading-relaxed">
-                Halo <strong>{currentUser.name}</strong>, akun keanggotaan Anda telah dibuat. Sesuai prinsip saling gotong royong di Komunitas TBK, silakan selesaikan 2 langkah sinergi berikut agar status Anda diverifikasi aktif oleh Admin.
+                Halo <strong>{currentUser.name}</strong>, akun keanggotaan Anda telah terdaftar. Sesuai prinsip saling gotong royong di Komunitas TBK, <strong>Anda wajib menyelesaikan 3 langkah sinergi di bawah ini sebelum dapat masuk ke dashboard dan melihat tugas komunitas</strong>.
               </p>
             </div>
 
@@ -205,7 +211,7 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
               {/* YouTube Algorithm Explanatory Notice */}
               <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-blue-900 text-[11px] leading-relaxed space-y-1">
                 <p className="font-bold flex items-center gap-1">
-                  <span>💡 Informasi Penting Algoritma YouTube:</span>
+                  <span>💡 Mengapa Harus 2 Menit?</span>
                 </p>
                 <p className="text-blue-800">
                   Sesuai algoritma YouTube, penonton <strong>harus menonton video lebih dari 1–2 menit</strong> sebelum menekan Subscribe agar akun Anda diakui sebagai subscriber asli dan tidak dihapus otomatis oleh sistem anti-spam YouTube.
@@ -362,7 +368,52 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
               </label>
             </div>
 
-            {/* Step 3: TikTok / Media Lain (If Admin Configured) */}
+            {/* Step 3: Gabung Grup WhatsApp Resmi Komunitas TBK (Request 4) */}
+            <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3 bg-slate-50/50">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0">
+                    <span className="text-base">💬</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-black text-slate-900">
+                      Langkah 3: Gabung Grup WhatsApp Resmi Komunitas TBK
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Pusat sinergi jadwal penayangan konten &amp; komentar gotong royong
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => {
+                    setHasOpenedWhatsapp(true);
+                    setWhatsappConfirmed(true);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all"
+                >
+                  <span>Gabung WhatsApp</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+
+              <label className="flex items-center gap-2 pt-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={whatsappConfirmed}
+                  onChange={(e) => setWhatsappConfirmed(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                />
+                <span className="text-xs text-slate-700 font-medium">
+                  Saya sudah menekan tombol di atas dan bergabung ke Grup WhatsApp resmi Komunitas TBK.
+                </span>
+              </label>
+            </div>
+
+            {/* Optional Step 4: TikTok if available */}
             {ttUrl && (
               <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3 bg-slate-50/50">
                 <div className="flex items-center justify-between gap-3">
@@ -372,7 +423,7 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
                     </div>
                     <div>
                       <h4 className="text-xs sm:text-sm font-black text-slate-900">
-                        Langkah 3: Follow TikTok Official Admin (Opsional)
+                        Langkah 4: Follow TikTok Official Admin (Opsional)
                       </h4>
                       <p className="text-[11px] text-slate-500">
                         Akun: <strong className="text-slate-800">{rawTt}</strong>
@@ -409,23 +460,74 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Gatekeeper Status Checklist Box */}
+            <div className={`p-4 rounded-2xl border transition-all ${
+              canSubmit ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-amber-50 border-amber-300 text-amber-950'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black uppercase tracking-wide flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Status Kunci Akses Dashboard:</span>
+                </span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
+                  canSubmit ? 'bg-emerald-600 text-white' : 'bg-amber-200 text-amber-900'
+                }`}>
+                  {canSubmit ? '🔓 Terbuka' : '🔒 Masih Terkunci'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-medium">
+                <div className="flex items-center gap-1.5">
+                  {isYoutubeRequirementMet ? (
+                    <span className="text-emerald-700 font-bold">✅ 1. Nonton YT 2 Menit</span>
+                  ) : (
+                    <span className="text-amber-800">⏳ 1. Nonton YT 2 Menit</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {instagramConfirmed ? (
+                    <span className="text-emerald-700 font-bold">✅ 2. Follow Instagram</span>
+                  ) : (
+                    <span className="text-amber-800">⏳ 2. Follow Instagram</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {whatsappConfirmed ? (
+                    <span className="text-emerald-700 font-bold">✅ 3. Gabung Grup WA</span>
+                  ) : (
+                    <span className="text-amber-800">⏳ 3. Gabung Grup WA</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons: strictly disabled if not canSubmit */}
+            <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs text-slate-500 hover:text-slate-700 font-medium cursor-pointer"
+                className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer"
               >
-                Selesaikan Nanti di Papan Tugas
+                Batalkan &amp; Kembali ke Halaman Depan
               </button>
 
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                disabled={!canSubmit || isSubmitting}
+                className={`w-full sm:w-auto px-7 py-3 rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  canSubmit
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/25 active:scale-95'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                }`}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{isSubmitting ? 'Mengirim Konfirmasi...' : 'Kirim Konfirmasi Selesai ke Admin'}</span>
+                <span>
+                  {isSubmitting
+                    ? 'Menyimpan & Membuka Dashboard...'
+                    : canSubmit
+                    ? 'Selesaikan Orientasi & Masuk ke Dashboard TBK →'
+                    : 'Selesaikan 3 Syarat Wajib di Atas untuk Membuka Dashboard'}
+                </span>
               </button>
             </div>
           </form>

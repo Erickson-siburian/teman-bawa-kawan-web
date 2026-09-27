@@ -27,7 +27,7 @@ interface LandingHeroViewProps {
   currentUser: TeamMember;
   allMembers: TeamMember[];
   isLoggedIn: boolean;
-  onOpenAuthModal: (mode?: 'login' | 'register') => void;
+  onOpenAuthModal: (mode?: 'login' | 'register' | 'admin_login') => void;
   onLogout?: () => void;
   onOpenEncryptionModal?: () => void;
   keyFingerprint?: string;
@@ -215,9 +215,19 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
               /* If NOT Logged In: NO "BUKA PAPAN TUGAS", Show LOGIN and DAFTAR buttons */
               <div className="flex items-center gap-2 sm:gap-3">
                 <button
+                  id="navbar-btn-admin"
+                  onClick={() => onOpenAuthModal('admin_login')}
+                  className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-black text-amber-300 hover:text-amber-100 bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  title="Login Khusus Administrator"
+                >
+                  <span>👑</span>
+                  <span>LOGIN ADMIN</span>
+                </button>
+
+                <button
                   id="navbar-btn-login"
                   onClick={() => onOpenAuthModal('login')}
-                  className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-emerald-100 hover:text-white hover:bg-emerald-900/40 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-emerald-100 hover:text-white hover:bg-emerald-900/40 transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   <span>LOGIN</span>
@@ -226,7 +236,7 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
                 <button
                   id="navbar-btn-daftar"
                   onClick={() => onOpenAuthModal('register')}
-                  className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 active:scale-95 text-slate-950 font-black text-xs sm:text-sm tracking-wide shadow-lg shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 active:scale-95 text-slate-950 font-black text-xs sm:text-sm tracking-wide shadow-lg shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>DAFTAR</span>
