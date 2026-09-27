@@ -23,7 +23,7 @@ import confetti from 'canvas-confetti';
 export default function App() {
   const [activeTab, setActiveTab] = useState<'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor'>('landing');
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(initialTeamMembers);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -51,7 +51,9 @@ export default function App() {
     id: 'user-1',
     name: 'Adrian & Andrew',
     email: 'haihaihai9191@gmail.com',
-    role: 'Wiraswasta / Pedagang & Ambassador TBK',
+    password: 'password123',
+    userType: 'admin',
+    role: 'Wiraswasta / Pedagang & Ambassador TBK (Admin)',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     gender: 'Laki-Laki',
     phoneNumber: '081298765432',
@@ -83,6 +85,10 @@ export default function App() {
     completedTasksCount: 18,
     onTimeRate: 92,
     status: 'online',
+    socialFollowProof: {
+      allCompleted: true,
+      completedAt: '2026-01-01T00:00:00Z',
+    },
     joinedAt: '2026-01-15T08:30:00Z',
   });
 
@@ -112,7 +118,21 @@ export default function App() {
     const cachedNotifs = syncManager.getCachedNotifs();
 
     const activeTasks = cachedTasks && cachedTasks.length > 0 ? cachedTasks : initialTasks;
-    const activeTeam = cachedTeam && cachedTeam.length > 0 ? cachedTeam : initialTeamMembers;
+    const rawTeam = cachedTeam && cachedTeam.length > 0 ? cachedTeam : initialTeamMembers;
+    const activeTeam = rawTeam.map((m: TeamMember) => {
+      if (m.id === 'user-1' || m.email.toLowerCase() === 'haihaihai9191@gmail.com') {
+        return {
+          ...m,
+          name: m.name || 'Adrian & Andrew',
+          email: 'haihaihai9191@gmail.com',
+          userType: 'admin' as const,
+          password: m.password || 'password123',
+          role: m.role || 'Wiraswasta / Pedagang & Ambassador TBK (Admin)',
+          socialFollowProof: { allCompleted: true, completedAt: '2026-01-01T00:00:00Z' },
+        };
+      }
+      return m;
+    });
     const activeNotifs = cachedNotifs && cachedNotifs.length > 0 ? cachedNotifs : initialNotifications;
 
     setTasks(activeTasks);
@@ -125,7 +145,7 @@ export default function App() {
 
     // Save defaults to cache if not already set
     if (!cachedTasks || cachedTasks.length === 0) syncManager.setCachedTasks(activeTasks);
-    if (!cachedTeam || cachedTeam.length === 0) syncManager.setCachedTeam(activeTeam);
+    syncManager.setCachedTeam(activeTeam);
     if (!cachedNotifs || cachedNotifs.length === 0) syncManager.setCachedNotifs(activeNotifs);
 
     // If online, attempt to fetch fresh data from server
@@ -144,9 +164,20 @@ export default function App() {
           syncManager.setCachedTasks(tasksRes.tasks);
         }
         if (teamRes && teamRes.success) {
-          setTeamMembers(teamRes.teamMembers);
-          syncManager.setCachedTeam(teamRes.teamMembers);
-          const matchedUser = teamRes.teamMembers.find((m: TeamMember) => m.id === currentUserIdRef.current);
+          const normalizedServerTeam = teamRes.teamMembers.map((m: TeamMember) => {
+            if (m.id === 'user-1' || m.email.toLowerCase() === 'haihaihai9191@gmail.com') {
+              return {
+                ...m,
+                userType: 'admin' as const,
+                password: m.password || 'password123',
+                socialFollowProof: { allCompleted: true, completedAt: '2026-01-01T00:00:00Z' },
+              };
+            }
+            return m;
+          });
+          setTeamMembers(normalizedServerTeam);
+          syncManager.setCachedTeam(normalizedServerTeam);
+          const matchedUser = normalizedServerTeam.find((m: TeamMember) => m.id === currentUserIdRef.current);
           if (matchedUser) setCurrentUser(matchedUser);
         }
         if (notifRes && notifRes.success) {
@@ -818,8 +849,21 @@ export default function App() {
   };
 
   const handleAuthSuccess = async (member: TeamMember, isRegistration?: boolean) => {
-    // If it's registration OR member has not completed orientation and is not admin:
-    if (isRegistration || (member.userType !== 'admin' && !member.socialFollowProof?.allCompleted)) {
+    // Check if user is Admin (by userType, email, id, or name)
+    const isAdmin =
+      member.userType === 'admin' ||
+      member.email.toLowerCase() === 'haihaihai9191@gmail.com' ||
+      member.id === 'user-1' ||
+      member.name.toLowerCase().includes('adrian');
+
+    if (isAdmin) {
+      member.userType = 'admin';
+      member.password = member.password || 'password123';
+      member.socialFollowProof = {
+        allCompleted: true,
+        completedAt: member.socialFollowProof?.completedAt || new Date().toISOString(),
+      };
+    } else if (isRegistration || !member.socialFollowProof?.allCompleted) {
       setOrientationMember(member);
       setIsOrientationModalOpen(true);
       // Gated! User CANNOT proceed to board until orientation proof is fulfilled!
