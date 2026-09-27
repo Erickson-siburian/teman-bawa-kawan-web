@@ -64,6 +64,10 @@ interface Task {
   onTime?: boolean;
   referralCodeUsed?: string;
   xpAwarded?: number;
+  creatorAvatar?: string;
+  assignedToAll?: boolean;
+  completedByMemberIds?: string[];
+  communityTaskType?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -130,9 +134,20 @@ interface NotificationItem {
   id: string;
   title: string;
   message: string;
-  type: 'deadline' | 'buddy_invite' | 'task_done' | 'level_up' | 'referral_reward' | 'sync' | 'security';
+  type:
+    | 'deadline'
+    | 'buddy_invite'
+    | 'task_done'
+    | 'level_up'
+    | 'referral_reward'
+    | 'sync'
+    | 'security'
+    | 'member_joined'
+    | 'community_task';
   read: boolean;
   createdAt: string;
+  memberId?: string;
+  taskId?: string;
 }
 
 interface ReferralRecord {
@@ -507,7 +522,148 @@ function initDatabase() {
       if (Array.isArray(data.referrals)) {
         referrals = data.referrals;
       }
-      console.log(`[Storage] Loaded ${teamMembers.length} members and ${tasks.length} tasks from disk.`);
+
+      // Add user-5 (Rian Hidayat) if not present
+      if (!teamMembers.some((m) => m.id === 'user-5')) {
+        teamMembers.push({
+          id: 'user-5',
+          name: 'Rian Hidayat',
+          email: 'rian.hidayat@tbk-team.id',
+          password: 'password123',
+          userType: 'user',
+          role: 'Gaming & Tech Streamer (54K)',
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+          gender: 'Laki-Laki',
+          phoneNumber: '081765432109',
+          occupation: 'Content Creator & Streamer',
+          socialAccounts: {
+            youtube: 'RianHidayatTech',
+            tiktok: '@rian_streamer',
+            instagram: '@rian_hidayat.tech',
+            threads: '@rian_hidayat.tech',
+            xTwitter: '@rian_tech',
+          },
+          creatorNiche: 'Gaming, Gadget & Streaming Tech',
+          primaryPlatform: 'YouTube',
+          monetizationStatus: 'partner_eligible',
+          xp: 620,
+          level: 2,
+          levelTitle: 'Kawan Kolaborator TBK',
+          streak: 3,
+          referralCode: 'TBK-RIAN-99',
+          referralPoints: 120,
+          referralsCount: 2,
+          buddySynergyScore: 82,
+          completedTasksCount: 8,
+          onTimeRate: 85,
+          status: 'online',
+          joinedAt: '2026-09-27T08:15:00Z',
+          socialFollowProof: {
+            youtubeWatchedSeconds: 150,
+            youtubeSubscribed: true,
+            youtubeWatchProof: 'Tuntas 2m 30s (> 2 Menit)',
+            youtubeVerifiedAt: '2026-09-27T08:20:00Z',
+            instagramFollowed: true,
+            tiktokFollowed: true,
+            facebookFollowed: true,
+            whatsappJoined: true,
+            allCompleted: true,
+            completedAt: '2026-09-27T08:20:00Z',
+          },
+        });
+      }
+
+      // Add broadcast task if not present
+      if (!tasks.some((t) => t.id === 'task-broadcast-1')) {
+        tasks.unshift({
+          id: 'task-broadcast-1',
+          title: '🔴 Tonton Min 2 Menit & Subscribe YouTube Rian Hidayat Tech',
+          description: 'Tugas dari member baru Rian Hidayat kepada seluruh peserta TBK! Wajib tonton minimal 2 menit sebelum subscribe dan like agar lolos verifikasi algoritma YouTube dan tidak masuk spam.',
+          isEncrypted: false,
+          status: 'in_progress',
+          priority: 'high',
+          creatorId: 'user-5',
+          creatorName: 'Rian Hidayat',
+          creatorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+          assigneeId: 'all',
+          assigneeName: 'Seluruh Peserta TBK',
+          assignedToAll: true,
+          completedByMemberIds: ['user-1', 'user-2'],
+          communityTaskType: 'youtube_watch_sub',
+          mediaLink: 'https://youtube.com/@RianHidayatTech',
+          platform: 'youtube',
+          dueDate: new Date(Date.now() + 86400000 * 4).toISOString(),
+          category: 'algorithm_growth',
+          tags: ['TugasMemberBaru', 'SalingSupport', 'YouTubeSubscribe', 'SeluruhPeserta'],
+          subtasks: [
+            { id: 'sub-b1', title: 'Tonton video minimal 2 menit penuh', completed: true },
+            { id: 'sub-b2', title: 'Subscribe channel YouTube Rian Hidayat', completed: true },
+            { id: 'sub-b3', title: 'Tinggalkan like & komentar relevan', completed: false },
+          ],
+          comments: [],
+          createdAt: '2026-09-27T08:25:00Z',
+          updatedAt: '2026-09-27T08:25:00Z',
+        });
+      }
+
+      // Add member_joined notifications if not present
+      const sampleNotifs: NotificationItem[] = [
+        {
+          id: 'notif-join-rian',
+          title: '👤 Member Baru Bergabung: Rian Hidayat',
+          message: 'Rian Hidayat (Gaming & Tech Streamer) baru saja bergabung dengan Komunitas TBK pada 27 September 2026. Klik untuk melihat resume member di Kalender Editorial!',
+          type: 'member_joined',
+          read: false,
+          createdAt: '2026-09-27T08:15:00Z',
+          memberId: 'user-5',
+        },
+        {
+          id: 'notif-task-rian',
+          title: '📢 Tugas Saling Support dari Member Baru: Rian Hidayat',
+          message: 'Member baru Rian Hidayat membagikan tugas ke seluruh peserta: "Tonton Min 2 Menit & Subscribe YouTube Rian Hidayat Tech". Ayo selesaikan!',
+          type: 'community_task',
+          read: false,
+          createdAt: '2026-09-27T08:25:00Z',
+          taskId: 'task-broadcast-1',
+          memberId: 'user-5',
+        },
+        {
+          id: 'notif-join-dewi',
+          title: '👤 Member Baru Bergabung: Dewi Lestari',
+          message: 'Dewi Lestari (Reviewer & Affiliate Host) bergabung dengan Komunitas TBK pada 26 September 2026. Buka Kalender Editorial untuk melihat resume member.',
+          type: 'member_joined',
+          read: false,
+          createdAt: '2026-09-26T09:45:00Z',
+          memberId: 'user-4',
+        },
+        {
+          id: 'notif-join-budi',
+          title: '👤 Member Baru Bergabung: Budi Santoso',
+          message: 'Budi Santoso (Video Editor & Motion Designer) bergabung dengan Komunitas TBK pada 20 September 2026. Cek resume di Kalender Editorial.',
+          type: 'member_joined',
+          read: true,
+          createdAt: '2026-09-20T14:20:00Z',
+          memberId: 'user-3',
+        },
+        {
+          id: 'notif-join-siti',
+          title: '👤 Member Baru Bergabung: Siti Rahmawati',
+          message: 'Siti Rahmawati (Konten Kreator Shorts & Reels) bergabung dengan Komunitas TBK pada 12 September 2026. Klik untuk melihat profil lengkap.',
+          type: 'member_joined',
+          read: true,
+          createdAt: '2026-09-12T10:15:00Z',
+          memberId: 'user-2',
+        },
+      ];
+
+      sampleNotifs.forEach((sn) => {
+        if (!notifications.some((n) => n.id === sn.id)) {
+          notifications.unshift(sn);
+        }
+      });
+
+      saveDatabase();
+      console.log(`[Storage] Loaded ${teamMembers.length} members, ${tasks.length} tasks, and ${notifications.length} notifications.`);
     } else {
       saveDatabase();
     }
@@ -621,12 +777,31 @@ async function startServer() {
       mediaLink: newTaskData.mediaLink,
       platform: newTaskData.platform,
       monetizationGoal: newTaskData.monetizationGoal,
+      assignedToAll: !!newTaskData.assignedToAll,
+      completedByMemberIds: newTaskData.completedByMemberIds || [],
+      communityTaskType: newTaskData.communityTaskType,
       createdAt: newTaskData.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
     tasks.unshift(newTask);
     saveDatabase();
+
+    // Create notification if broadcasted to all members
+    if (newTask.assignedToAll) {
+      const broadcastNotif: NotificationItem = {
+        id: `notif-broadcast-${Date.now()}`,
+        title: `📢 Tugas Saling Support dari ${newTask.creatorName}`,
+        message: `Member ${newTask.creatorName} mengajak seluruh peserta untuk saling support: "${newTask.title}". Tonton/follow untuk mendongkrak sinergi!`,
+        type: 'community_task',
+        read: false,
+        createdAt: new Date().toISOString(),
+        taskId: newTask.id,
+        memberId: newTask.creatorId,
+      };
+      notifications.unshift(broadcastNotif);
+      broadcastEvent('notification_added', broadcastNotif);
+    }
 
     // Create notification if buddy is assigned
     if (newTask.buddyId && newTask.buddyName) {
@@ -876,14 +1051,15 @@ async function startServer() {
     } else {
       teamMembers.unshift(newMember);
 
-      // Create notification for admin and community
+      // Create notification for admin and community synchronized with Editorial Calendar
       const registerNotif: NotificationItem = {
-        id: `notif-${Date.now()}`,
-        title: '🎉 Member Baru Bergabung!',
-        message: `${newMember.name} (${newMember.occupation || 'Member Baru'}) berhasil mendaftar ke Komunitas TBK.`,
-        type: 'level_up',
+        id: `notif-join-${newMember.id}-${Date.now()}`,
+        title: `👤 Member Baru Bergabung: ${newMember.name}`,
+        message: `${newMember.name} (${newMember.role || newMember.occupation || 'Member Baru'}) telah bergabung di Komunitas TBK. Klik untuk melihat resume member di Kalender Editorial!`,
+        type: 'member_joined',
         read: false,
-        createdAt: new Date().toISOString(),
+        createdAt: newMember.joinedAt || new Date().toISOString(),
+        memberId: newMember.id,
       };
       notifications.unshift(registerNotif);
       broadcastEvent('notification_added', registerNotif);

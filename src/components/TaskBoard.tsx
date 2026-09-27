@@ -27,6 +27,7 @@ interface TaskBoardProps {
   onOpenNewTaskModal: (status?: TaskStatus) => void;
   onQuickStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onQuickAssignBuddy: (taskId: string, buddyId: string) => void;
+  onOpenBroadcastTaskModal?: () => void;
 }
 
 const statusColumns: { id: TaskStatus; title: string; color: string; bg: string }[] = [
@@ -51,6 +52,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
   onOpenNewTaskModal,
   onQuickStatusChange,
   onQuickAssignBuddy,
+  onOpenBroadcastTaskModal,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -68,7 +70,11 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
 
     let matchesBuddy = true;
     if (filterBuddyOnly === 'mine') {
-      matchesBuddy = task.assigneeId === currentUser.id || task.buddyId === currentUser.id;
+      matchesBuddy =
+        task.assigneeId === currentUser.id ||
+        task.buddyId === currentUser.id ||
+        task.creatorId === currentUser.id ||
+        task.assignedToAll === true;
     } else if (filterBuddyOnly === 'with_buddy') {
       matchesBuddy = !!task.buddyId;
     } else if (filterBuddyOnly === 'need_buddy') {
@@ -113,13 +119,23 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {onOpenBroadcastTaskModal && (
+              <button
+                onClick={onOpenBroadcastTaskModal}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-400/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Sparkles className="w-4 h-4 stroke-[2.5]" />
+                + Beri Tugas ke Semua Member
+              </button>
+            )}
+
             <button
               id="btn-add-task-top"
               onClick={() => onOpenNewTaskModal()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-amber-400/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm border border-white/20 backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
-              Tambah Konten / Tugas TBK
+              Tambah Tugas Biasa
             </button>
           </div>
         </div>
@@ -299,6 +315,19 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                           <h4 className="font-semibold text-xs sm:text-sm text-slate-800 line-clamp-2 group-hover:text-indigo-600 transition-colors">
                             {task.title}
                           </h4>
+
+                          {/* Community Broadcast Badge */}
+                          {task.assignedToAll && (
+                            <div className="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 text-[10px] font-bold">
+                              <span className="flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span>Dari: {task.creatorName.split(' ')[0]} (Seluruh Peserta)</span>
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 font-extrabold">
+                                {task.completedByMemberIds?.length || 0}/{teamMembers.length} Selesai
+                              </span>
+                            </div>
+                          )}
 
                           {/* Monetization Target & Media Link Badge */}
                           <div className="flex flex-wrap items-center gap-1.5">

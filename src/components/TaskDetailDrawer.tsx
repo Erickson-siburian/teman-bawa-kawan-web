@@ -192,6 +192,51 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
             </div>
           )}
 
+          {/* Broadcast to All Members Box */}
+          {task.assignedToAll && (
+            <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-300 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-amber-950 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  Tugas Komunitas untuk Seluruh Peserta TBK
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-extrabold text-[10px]">
+                  {task.completedByMemberIds?.length || 0} / {teamMembers.length} Peserta Selesai
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-900 leading-relaxed">
+                Diberikan oleh member <strong>{task.creatorName}</strong> agar seluruh anggota komunitas saling gotong-royong mem-follow atau menonton video.
+              </p>
+
+              {/* Action: Mark as Completed by current user */}
+              <div className="pt-2 border-t border-amber-200 flex items-center justify-between">
+                {task.completedByMemberIds?.includes(currentUser.id) ? (
+                  <span className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    Anda Telah Menyelesaikan Tugas Ini (+50 XP)
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => {
+                      const updated = [...(task.completedByMemberIds || []), currentUser.id];
+                      task.completedByMemberIds = updated;
+                      if (updated.length >= teamMembers.length) {
+                        onStatusChange(task.id, 'done');
+                      } else {
+                        onStatusChange(task.id, 'in_progress');
+                      }
+                      playTaskDoneChime();
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-xs transition-all"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Tandai Saya Telah Selesaikan Tugas Ini (+50 XP)
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Teman Bawa Kawan (TBK) Partner Duo Box */}
           <div className="p-4 rounded-xl bg-linear-to-r from-amber-50/80 to-indigo-50/50 border border-amber-200/80 space-y-3">
             <div className="flex items-center justify-between">

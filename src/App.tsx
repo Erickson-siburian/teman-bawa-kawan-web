@@ -14,6 +14,7 @@ import { AdminOfficialSocialsModal } from './components/AdminOfficialSocialsModa
 import { PostRegisterOrientationModal } from './components/PostRegisterOrientationModal';
 import { EditMemberModal } from './components/EditMemberModal';
 import { DeleteMemberConfirmModal } from './components/DeleteMemberConfirmModal';
+import { CommunityBroadcastTaskModal } from './components/CommunityBroadcastTaskModal';
 import { NotificationItem, ReferralRecord, Task, TaskStatus, TeamMember, MemberSocialAccounts, SocialFollowProof } from './types';
 import { syncManager } from './lib/syncManager';
 import { playTaskDoneChime, playLevelUpFanfare, playNotificationTone } from './lib/audio';
@@ -32,6 +33,11 @@ export default function App() {
   const [isAdminSocialsModalOpen, setIsAdminSocialsModalOpen] = useState(false);
   const [isOrientationModalOpen, setIsOrientationModalOpen] = useState(false);
   const [orientationMember, setOrientationMember] = useState<TeamMember | null>(null);
+
+  // Community Broadcast Task & Calendar Selection States
+  const [isBroadcastTaskModalOpen, setIsBroadcastTaskModalOpen] = useState(false);
+  const [broadcastTaskCreator, setBroadcastTaskCreator] = useState<TeamMember | undefined>(undefined);
+  const [selectedMemberIdForCalendar, setSelectedMemberIdForCalendar] = useState<string | null>(null);
 
   // Edit & Delete Member States (User Request 3)
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
@@ -133,7 +139,15 @@ export default function App() {
       }
       return m;
     });
-    const activeNotifs = cachedNotifs && cachedNotifs.length > 0 ? cachedNotifs : initialNotifications;
+
+    // Ensure member_joined notifications are included even if cachedNotifs exists
+    const baseNotifs = cachedNotifs && cachedNotifs.length > 0 ? [...cachedNotifs] : [...initialNotifications];
+    initialNotifications.forEach((initN) => {
+      if (!baseNotifs.some((n) => n.id === initN.id)) {
+        baseNotifs.unshift(initN);
+      }
+    });
+    const activeNotifs = baseNotifs;
 
     setTasks(activeTasks);
     setTeamMembers(activeTeam);
@@ -292,21 +306,27 @@ export default function App() {
     };
   }, []);
 
-  // Create Task
+  // Create Task (including Community Broadcast Task)
   const handleCreateTask = async (taskData: Partial<Task>) => {
+    const isBroadcast = !!taskData.assignedToAll || taskData.assigneeId === 'all';
+    const creatorUser = taskData.creatorId
+      ? teamMembers.find((m) => m.id === taskData.creatorId) || currentUser
+      : currentUser;
+
     const newTask: Task = {
-      id: `task-${Date.now()}`,
+      id: taskData.id || `task-${Date.now()}`,
       title: taskData.title || 'Tugas TBK',
       description: taskData.description || '',
       isEncrypted: !!taskData.isEncrypted,
       encryptedData: taskData.encryptedData,
       status: taskData.status || 'todo',
       priority: taskData.priority || 'medium',
-      creatorId: currentUser.id,
-      creatorName: currentUser.name,
-      assigneeId: taskData.assigneeId || currentUser.id,
-      assigneeName: taskData.assigneeName || currentUser.name,
-      assigneeAvatar: taskData.assigneeAvatar || currentUser.avatar,
+      creatorId: creatorUser.id,
+      creatorName: creatorUser.name,
+      creatorAvatar: creatorUser.avatar,
+      assigneeId: isBroadcast ? 'all' : taskData.assigneeId || currentUser.id,
+      assigneeName: isBroadcast ? 'Seluruh Peserta TBK' : taskData.assigneeName || currentUser.name,
+      assigneeAvatar: isBroadcast ? undefined : taskData.assigneeAvatar || currentUser.avatar,
       buddyId: taskData.buddyId,
       buddyName: taskData.buddyName,
       buddyAvatar: taskData.buddyAvatar,
@@ -316,6 +336,13 @@ export default function App() {
       subtasks: taskData.subtasks || [],
       comments: [],
       referralCodeUsed: taskData.referralCodeUsed,
+      mediaLink: taskData.mediaLink,
+      platform: taskData.platform,
+      monetizationGoal: taskData.monetizationGoal,
+      isOfficialMandatory: !!taskData.isOfficialMandatory,
+      assignedToAll: isBroadcast,
+      completedByMemberIds: taskData.completedByMemberIds || [],
+      communityTaskType: taskData.communityTaskType,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       syncStatus: syncManager.isOnline() ? 'synced' : 'pending_sync',
@@ -327,6 +354,22 @@ export default function App() {
       syncManager.setCachedTasks(updated);
       return updated;
     });
+
+    // Create notification if broadcasted to all members
+    if (newTask.assignedToAll) {
+      const broadcastNotif: NotificationItem = {
+        id: `notif-broadcast-${Date.now()}`,
+        title: `📢 Tugas Saling Support dari ${newTask.creatorName}`,
+        message: `Member ${newTask.creatorName} mengajak seluruh peserta: "${newTask.title}". Tonton/follow untuk saling support!`,
+        type: 'community_task',
+        read: false,
+        createdAt: new Date().toISOString(),
+        taskId: newTask.id,
+        memberId: newTask.creatorId,
+      };
+      setNotifications((prev) => [broadcastNotif, ...prev]);
+      playNotificationTone();
+    }
 
     if (syncManager.isOnline()) {
       try {
@@ -751,6 +794,20 @@ export default function App() {
     }
   };
 
+  // Handle Notification selection (Synchronized with Editorial Calendar & Task Board)
+  const handleSelectNotification = (notif: NotificationItem) => {
+    if (notif.type === 'member_joined' && notif.memberId) {
+      setSelectedMemberIdForCalendar(notif.memberId);
+      setActiveTab('calendar');
+    } else if (notif.type === 'community_task' && notif.taskId) {
+      const target = tasks.find((t) => t.id === notif.taskId);
+      if (target) {
+        setSelectedTask(target);
+        setActiveTab('board');
+      }
+    }
+  };
+
   // Member Edit & Delete Handlers (User Request 3)
   const handleOpenEditMember = (member: TeamMember) => {
     setEditingMember(member);
@@ -918,7 +975,18 @@ export default function App() {
       read: false,
       createdAt: new Date().toISOString(),
     };
-    setNotifications((prev) => [notif, ...prev]);
+
+    const joinNotif: NotificationItem = {
+      id: `notif-join-${member.id}-${Date.now()}`,
+      title: `👤 Member Baru Bergabung: ${member.name}`,
+      message: `${member.name} (${member.role || member.occupation || 'Member Baru'}) telah bergabung di Komunitas TBK pada tanggal ${new Date(member.joinedAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}. Klik untuk melihat resume member di Kalender Editorial!`,
+      type: 'member_joined',
+      read: false,
+      createdAt: member.joinedAt || new Date().toISOString(),
+      memberId: member.id,
+    };
+
+    setNotifications((prev) => [joinNotif, notif, ...prev]);
 
     // Navigate to board
     setActiveTab('board');
@@ -992,6 +1060,24 @@ export default function App() {
       spread: 80,
       origin: { y: 0.5 },
     });
+
+    // Add member joined notification
+    const newJoinNotif: NotificationItem = {
+      id: `notif-join-${targetMember.id}-${Date.now()}`,
+      title: `👤 Member Baru Bergabung: ${targetMember.name}`,
+      message: `${targetMember.name} (${targetMember.role || targetMember.occupation || 'Member Baru'}) telah resmi bergabung di Komunitas TBK. Klik untuk melihat resume di Kalender Editorial!`,
+      type: 'member_joined',
+      read: false,
+      createdAt: targetMember.joinedAt || new Date().toISOString(),
+      memberId: targetMember.id,
+    };
+    setNotifications((prev) => [newJoinNotif, ...prev]);
+
+    // Prompt new member to give task to all members
+    setBroadcastTaskCreator(targetMember);
+    setTimeout(() => {
+      setIsBroadcastTaskModalOpen(true);
+    }, 1200);
   };
 
   // Full-Screen Front Landing Page (Hero Showcase inspired by reference design)
@@ -1077,6 +1163,7 @@ export default function App() {
         notifications={notifications}
         onMarkNotifRead={handleMarkNotifRead}
         onMarkAllNotifsRead={handleMarkAllNotifsRead}
+        onSelectNotification={handleSelectNotification}
         currentUser={currentUser}
         allMembers={teamMembers}
         onSwitchUser={setCurrentUser}
@@ -1084,6 +1171,10 @@ export default function App() {
         onOpenNewTaskModal={() => {
           setTaskModalInitialStatus('todo');
           setIsTaskModalOpen(true);
+        }}
+        onOpenBroadcastTaskModal={() => {
+          setBroadcastTaskCreator(currentUser);
+          setIsBroadcastTaskModalOpen(true);
         }}
         onOpenAdminSocialsModal={() => setIsAdminSocialsModalOpen(true)}
       />
@@ -1100,13 +1191,27 @@ export default function App() {
               setTaskModalInitialStatus(status || 'todo');
               setIsTaskModalOpen(true);
             }}
+            onOpenBroadcastTaskModal={() => {
+              setBroadcastTaskCreator(currentUser);
+              setIsBroadcastTaskModalOpen(true);
+            }}
             onQuickStatusChange={handleUpdateTaskStatus}
             onQuickAssignBuddy={handleAssignBuddy}
           />
         )}
 
         {activeTab === 'calendar' && (
-          <CalendarView tasks={tasks} currentUser={currentUser} onSelectTask={setSelectedTask} />
+          <CalendarView
+            tasks={tasks}
+            teamMembers={teamMembers}
+            currentUser={currentUser}
+            onSelectTask={setSelectedTask}
+            selectedMemberId={selectedMemberIdForCalendar}
+            onOpenBroadcastTaskModal={(member) => {
+              setBroadcastTaskCreator(member || currentUser);
+              setIsBroadcastTaskModalOpen(true);
+            }}
+          />
         )}
 
         {activeTab === 'gamification' && (
@@ -1208,6 +1313,18 @@ export default function App() {
         initialStatus={taskModalInitialStatus}
         teamMembers={teamMembers}
         currentUser={currentUser}
+      />
+
+      <CommunityBroadcastTaskModal
+        isOpen={isBroadcastTaskModalOpen}
+        onClose={() => {
+          setIsBroadcastTaskModalOpen(false);
+          setBroadcastTaskCreator(undefined);
+        }}
+        currentUser={currentUser}
+        targetMember={broadcastTaskCreator}
+        allMembers={teamMembers}
+        onSubmit={handleCreateTask}
       />
 
       <TaskDetailDrawer

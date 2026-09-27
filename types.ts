@@ -71,6 +71,10 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   syncStatus?: 'synced' | 'pending_sync' | 'sync_error';
+  assignedToAll?: boolean; // Tugas disiarkan ke seluruh peserta/member
+  completedByMemberIds?: string[]; // ID para peserta/member yang telah menyelesaikan tugas ini
+  communityTaskType?: 'youtube_watch_sub' | 'instagram_follow' | 'tiktok_follow' | 'google_review' | 'other';
+  creatorAvatar?: string;
 }
 
 export interface Badge {
@@ -145,9 +149,20 @@ export interface NotificationItem {
   id: string;
   title: string;
   message: string;
-  type: 'deadline' | 'buddy_invite' | 'task_done' | 'level_up' | 'referral_reward' | 'sync' | 'security';
+  type:
+    | 'deadline'
+    | 'buddy_invite'
+    | 'task_done'
+    | 'level_up'
+    | 'referral_reward'
+    | 'sync'
+    | 'security'
+    | 'member_joined'
+    | 'community_task';
   read: boolean;
   createdAt: string;
+  memberId?: string;
+  taskId?: string;
 }
 
 export interface ReferralRecord {

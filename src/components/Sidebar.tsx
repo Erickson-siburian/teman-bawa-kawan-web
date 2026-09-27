@@ -38,6 +38,8 @@ interface SidebarProps {
   onSimulatePeerAction: () => void;
   onOpenNewTaskModal?: () => void;
   onOpenAdminSocialsModal?: () => void;
+  onSelectNotification?: (notif: NotificationItem) => void;
+  onOpenBroadcastTaskModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -55,6 +57,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSimulatePeerAction,
   onOpenNewTaskModal,
   onOpenAdminSocialsModal,
+  onSelectNotification,
+  onOpenBroadcastTaskModal,
 }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -98,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'calendar',
       label: 'Kalender Editorial',
       icon: Calendar,
-      desc: 'Jadwal & Prime Time',
+      desc: 'Resume Member Baru Join',
     },
     {
       id: 'gamification',
@@ -149,6 +153,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Plus className="w-4 h-4" />
             <span>Tugas Kolaborasi Baru</span>
+          </button>
+        )}
+
+        {/* Quick Broadcast Task to All Members Button */}
+        {onOpenBroadcastTaskModal && (
+          <button
+            onClick={() => {
+              onOpenBroadcastTaskModal();
+              setMobileOpen(false);
+            }}
+            className="mt-2 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-sm shadow-amber-500/20 active:scale-[0.98] transition-all cursor-pointer"
+            title="Beri tugas saling support (Follow medsos / Tonton YouTube) kepada seluruh peserta"
+          >
+            <Sparkles className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>+ Beri Tugas ke Semua Member</span>
           </button>
         )}
 
@@ -320,21 +339,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {notifications.length === 0 ? (
                     <p className="text-center py-4 text-xs text-slate-400">Belum ada notifikasi.</p>
                   ) : (
-                    notifications.slice(0, 6).map((notif) => (
+                    notifications.slice(0, 8).map((notif) => (
                       <div
                         key={notif.id}
-                        onClick={() => onMarkNotifRead(notif.id)}
-                        className={`p-2 rounded-lg text-xs cursor-pointer transition-colors ${
-                          notif.read ? 'bg-slate-50 text-slate-600' : 'bg-indigo-50/70 border border-indigo-100 text-slate-800'
+                        onClick={() => {
+                          onMarkNotifRead(notif.id);
+                          if (onSelectNotification) {
+                            onSelectNotification(notif);
+                          }
+                          setShowNotifs(false);
+                          setMobileOpen(false);
+                        }}
+                        className={`p-2.5 rounded-xl text-xs cursor-pointer transition-all border ${
+                          notif.read
+                            ? 'bg-slate-50 border-slate-200/80 text-slate-600'
+                            : notif.type === 'member_joined'
+                            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950 shadow-2xs'
+                            : notif.type === 'community_task'
+                            ? 'bg-amber-50/80 border-amber-200 text-amber-950 shadow-2xs'
+                            : 'bg-indigo-50/70 border-indigo-100 text-slate-800'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-1">
-                          <span className="font-semibold text-[11px]">{notif.title}</span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {notif.type === 'member_joined' && (
+                              <span className="px-1.5 py-0.2 rounded bg-emerald-200 text-emerald-900 font-bold text-[9px] shrink-0">
+                                Member Baru
+                              </span>
+                            )}
+                            {notif.type === 'community_task' && (
+                              <span className="px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 font-bold text-[9px] shrink-0">
+                                Tugas Saling Support
+                              </span>
+                            )}
+                            <span className="font-bold text-[11px] truncate">{notif.title}</span>
+                          </div>
                           <span className="text-[9px] text-slate-400 shrink-0">
                             {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <p className="mt-0.5 text-slate-600 text-[10px] leading-relaxed">{notif.message}</p>
+                        <p className="mt-1 text-slate-600 text-[10px] leading-relaxed">{notif.message}</p>
+                        {notif.type === 'member_joined' && (
+                          <p className="mt-1 text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                            <span>➔ Lihat resume di Kalender Editorial</span>
+                          </p>
+                        )}
                       </div>
                     ))
                   )}

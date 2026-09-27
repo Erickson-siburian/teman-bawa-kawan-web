@@ -32,6 +32,7 @@ interface NavbarProps {
   onSwitchUser: (user: TeamMember) => void;
   onSimulatePeerAction: () => void;
   onOpenAdminSocialsModal?: () => void;
+  onSelectNotification?: (notif: NotificationItem) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -48,6 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSwitchUser,
   onSimulatePeerAction,
   onOpenAdminSocialsModal,
+  onSelectNotification,
 }) => {
   const [showNotifs, setShowNotifs] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -228,18 +230,47 @@ export const Navbar: React.FC<NavbarProps> = ({
                       notifications.slice(0, 8).map((notif) => (
                         <div
                           key={notif.id}
-                          onClick={() => onMarkNotifRead(notif.id)}
-                          className={`p-2.5 rounded-lg text-xs cursor-pointer transition-colors ${
-                            notif.read ? 'bg-slate-50 text-slate-600' : 'bg-indigo-50/70 border border-indigo-100 text-slate-800'
+                          onClick={() => {
+                            onMarkNotifRead(notif.id);
+                            if (onSelectNotification) {
+                              onSelectNotification(notif);
+                            }
+                            setShowNotifs(false);
+                          }}
+                          className={`p-2.5 rounded-lg text-xs cursor-pointer transition-colors border ${
+                            notif.read
+                              ? 'bg-slate-50 text-slate-600 border-slate-100'
+                              : notif.type === 'member_joined'
+                              ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                              : notif.type === 'community_task'
+                              ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+                              : 'bg-indigo-50/70 border-indigo-100 text-slate-800'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-1">
-                            <span className="font-semibold">{notif.title}</span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {notif.type === 'member_joined' && (
+                                <span className="px-1.5 py-0.2 rounded bg-emerald-200 text-emerald-900 font-bold text-[9px] shrink-0">
+                                  Member Baru
+                                </span>
+                              )}
+                              {notif.type === 'community_task' && (
+                                <span className="px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 font-bold text-[9px] shrink-0">
+                                  Tugas Saling Support
+                                </span>
+                              )}
+                              <span className="font-semibold truncate">{notif.title}</span>
+                            </div>
                             <span className="text-[10px] text-slate-400 shrink-0">
                               {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
                           <p className="mt-1 text-slate-600 text-[11px] leading-relaxed">{notif.message}</p>
+                          {notif.type === 'member_joined' && (
+                            <p className="mt-1 text-[10px] text-emerald-700 font-bold">
+                              ➔ Buka resume di Kalender Editorial
+                            </p>
+                          )}
                         </div>
                       ))
                     )}
