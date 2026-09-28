@@ -213,7 +213,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                 {task.completedByMemberIds?.includes(currentUser.id) ? (
                   <span className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Anda Telah Menyelesaikan Tugas Ini (+50 XP)
+                    Anda Telah Menyelesaikan Tugas Ini
                   </span>
                 ) : (
                   <button
@@ -230,7 +230,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-xs transition-all"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    Tandai Saya Telah Selesaikan Tugas Ini (+50 XP)
+                    Tandai Saya Telah Selesaikan Tugas Ini
                   </button>
                 )}
               </div>

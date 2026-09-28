@@ -185,3 +185,29 @@ export interface SyncQueueItem {
   timestamp: number;
   retries: number;
 }
+
+export interface WebsiteOnlineConfig {
+  siteTitle: string;
+  heroHeadline: string;
+  heroSubtitle: string;
+  announcementText: string;
+  isAnnouncementActive: boolean;
+  announcementType: 'info' | 'success' | 'warning' | 'alert';
+  maintenanceMode: boolean;
+  registrationOpen: boolean;
+  officialSocials: MemberSocialAccounts;
+  lastUpdatedOnline: string;
+  updatedBy: string;
+  firebaseProjectId?: string;
+  firebaseStatus: 'connected' | 'syncing' | 'offline_ready';
+}
+
+export interface FirebaseConnectionConfig {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+  firestoreDatabaseId: string;
+}

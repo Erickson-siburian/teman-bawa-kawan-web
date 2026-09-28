@@ -44,6 +44,7 @@ interface AdminProgressMonitorProps {
   onDeleteTask?: (taskId: string) => void;
   onEditMember?: (member: TeamMember) => void;
   onDeleteMember?: (memberId: string) => void;
+  onOpenFirebaseModal?: () => void;
 }
 
 export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
@@ -59,6 +60,7 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
   onDeleteTask,
   onEditMember,
   onDeleteMember,
+  onOpenFirebaseModal,
 }) => {
   const [filterStatus, setFilterStatus] = useState<
     'all' | 'new_members' | 'social_verified' | 'social_pending' | 'completed' | 'in_progress' | 'unassigned'
@@ -259,6 +261,18 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
 
           {/* Quick Action Button */}
           <div className="flex flex-wrap items-center gap-2.5">
+            {onOpenFirebaseModal && (
+              <button
+                type="button"
+                onClick={onOpenFirebaseModal}
+                className="px-4 py-2.5 rounded-xl bg-linear-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+                title="Fitur Khusus Admin: Update Website Secara Online Menggunakan Google Firebase"
+              >
+                <span>🔥</span>
+                <span>Update Website (Firebase)</span>
+              </button>
+            )}
+
             {onOpenAdminSocialsModal && (
               <button
                 type="button"

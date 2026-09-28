@@ -165,46 +165,6 @@ interface ReferralRecord {
 // Initial Team Members Data (TBK Member Circle with Registration Details)
 let teamMembers: TeamMember[] = [
   {
-    id: 'user-1',
-    name: 'Adrian & Andrew',
-    email: 'haihaihai9191@gmail.com',
-    password: 'password123',
-    userType: 'admin',
-    role: 'Wiraswasta / Pedagang & Ambassador TBK',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    gender: 'Laki-Laki',
-    phoneNumber: '081298765432',
-    occupation: 'Wiraswasta / Pedagang',
-    socialAccounts: {
-      instagram: '@adrian_andrew.id',
-      youtube: 'AdrianAndrewOfficial',
-      googleMap: 'Adrian Local Guide',
-      facebook: 'Adrian Andrew ID',
-      googlePlaystore: 'adrian.reviewer',
-      threads: '@adrian_andrew.id',
-      tiktok: '@adrianandrew_tiktok',
-      linkedIn: 'adrian-andrew',
-      spotify: 'Adrian Andrew Podcast',
-      detik: 'adrian_komentar',
-      xTwitter: '@adrian_andrew',
-    },
-    creatorNiche: 'Multiplatform Sinergi',
-    primaryPlatform: 'Instagram',
-    monetizationStatus: 'monetized_active',
-    xp: 1420,
-    level: 4,
-    levelTitle: 'Master Monetisasi TBK',
-    streak: 9,
-    referralCode: 'TBK-ADRIAN-88',
-    referralPoints: 340,
-    referralsCount: 6,
-    buddySynergyScore: 94,
-    completedTasksCount: 18,
-    onTimeRate: 92,
-    status: 'online',
-    joinedAt: '2026-01-15T08:30:00Z',
-  },
-  {
     id: 'user-2',
     name: 'Siti Rahmawati',
     email: 'siti.rahma@tbk-team.id',
@@ -312,14 +272,14 @@ let tasks: Task[] = [
     isEncrypted: false,
     status: 'in_progress',
     priority: 'urgent',
-    creatorId: 'user-1',
-    creatorName: 'Adrian Pratama',
+    creatorId: 'user-3',
+    creatorName: 'Budi Santoso',
     assigneeId: 'user-4',
     assigneeName: 'Dewi Lestari',
     assigneeAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    buddyId: 'user-1',
-    buddyName: 'Adrian Pratama',
-    buddyAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    buddyId: 'user-2',
+    buddyName: 'Siti Rahmawati',
+    buddyAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
     dueDate: new Date(Date.now() + 86400000 * 2).toISOString(),
     category: 'monetization_sponsor',
     tags: ['Monetisasi', 'Endorsement', 'Kolaborasi', 'RateCard'],
@@ -331,8 +291,8 @@ let tasks: Task[] = [
     comments: [
       {
         id: 'c-1',
-        userId: 'user-1',
-        userName: 'Adrian Pratama',
+        userId: 'user-3',
+        userName: 'Budi Santoso',
         text: 'Kawan Dewi, rincian jadwal kolaborasi dan pembagian tugas sudah diunggah secara terbuka. Silakan dicek dan disesuaikan.',
         createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
       },
@@ -340,11 +300,11 @@ let tasks: Task[] = [
         id: 'c-2',
         userId: 'user-4',
         userName: 'Dewi Lestari',
-        text: 'Siap Kawan Adrian! Sinergi TBK kita mantap, saya akan siapkan perlengkapan live stream sebelum deadline.',
+        text: 'Siap Kawan Budi! Sinergi TBK kita mantap, saya akan siapkan perlengkapan live stream sebelum deadline.',
         createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
       },
     ],
-    referralCodeUsed: 'TBK-ADRIAN-88',
+    referralCodeUsed: 'TBK-BUDI-19',
     xpAwarded: 120,
     createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
     updatedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
@@ -395,8 +355,8 @@ let tasks: Task[] = [
     isEncrypted: false,
     status: 'in_progress',
     priority: 'urgent',
-    creatorId: 'user-1',
-    creatorName: 'Adrian Pratama',
+    creatorId: 'user-2',
+    creatorName: 'Siti Rahmawati',
     assigneeId: 'user-3',
     assigneeName: 'Budi Santoso',
     assigneeAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
@@ -426,9 +386,9 @@ let tasks: Task[] = [
     priority: 'high',
     creatorId: 'user-3',
     creatorName: 'Budi Santoso',
-    assigneeId: 'user-1',
-    assigneeName: 'Adrian Pratama',
-    assigneeAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    assigneeId: 'user-5',
+    assigneeName: 'Rian Hidayat',
+    assigneeAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
     buddyId: 'user-4',
     buddyName: 'Dewi Lestari',
     buddyAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
@@ -465,8 +425,8 @@ let notifications: NotificationItem[] = [
   },
   {
     id: 'notif-3',
-    title: '⚡ Level Up: Master Monetisasi TBK!',
-    message: 'Selamat! Adrian Pratama mencapai Level 4 dengan skor sinergi saling support 94%.',
+    title: '⚡ Level Up: Kreator Sinergi TBK!',
+    message: 'Selamat! Siti Rahmawati mencapai Level 3 dengan skor sinergi saling support 88%.',
     type: 'level_up',
     read: true,
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
@@ -476,8 +436,8 @@ let notifications: NotificationItem[] = [
 let referrals: ReferralRecord[] = [
   {
     id: 'ref-1',
-    code: 'TBK-ADRIAN-88',
-    inviterName: 'Adrian Pratama',
+    code: 'TBK-SITI-42',
+    inviterName: 'Siti Rahmawati',
     refereeName: 'Dewi Lestari',
     taskId: 'task-101',
     taskTitle: 'Kontrak Endorsement Brand Eksklusif & Rate Card 2026',
@@ -497,6 +457,30 @@ let referrals: ReferralRecord[] = [
     completedAt: new Date(Date.now() - 86400000 * 1.2).toISOString(),
   },
 ];
+
+let websiteConfig: any = {
+  siteTitle: 'Komunitas Teman Bawa Kawan (TBK)',
+  heroHeadline: 'Komunitas Teman Bawa Kawan: Gotong Royong Saling Support',
+  heroSubtitle:
+    'Selesaikan tugas bersama Kawan Duo, tembus syarat jam tayang & monetisasi multiplatform, tonton video minimal 2 menit dan saling follow secara aman.',
+  announcementText:
+    '📢 Pengumuman Resmi: Seluruh member baru wajib menyelesaikan 3 Misi Orientasi sebelum kolaborasi. Saling support dan gotong royong!',
+  isAnnouncementActive: true,
+  announcementType: 'info',
+  maintenanceMode: false,
+  registrationOpen: true,
+  officialSocials: {
+    instagram: '@adrian_andrew.id',
+    youtube: 'https://youtube.com/@adrian_andrew.id',
+    tiktok: '@adrianandrew_tiktok',
+    facebook: 'Adrian Andrew ID',
+    whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+  },
+  lastUpdatedOnline: new Date().toISOString(),
+  updatedBy: 'Administrator Resmi TBK',
+  firebaseProjectId: 'tbk-komunitas-online',
+  firebaseStatus: 'connected',
+};
 
 // Persistent File Storage Path
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -521,6 +505,9 @@ function initDatabase() {
       }
       if (Array.isArray(data.referrals)) {
         referrals = data.referrals;
+      }
+      if (data.websiteConfig && typeof data.websiteConfig === 'object') {
+        websiteConfig = { ...websiteConfig, ...data.websiteConfig };
       }
 
       // Add user-5 (Rian Hidayat) if not present
@@ -588,7 +575,7 @@ function initDatabase() {
           assigneeId: 'all',
           assigneeName: 'Seluruh Peserta TBK',
           assignedToAll: true,
-          completedByMemberIds: ['user-1', 'user-2'],
+          completedByMemberIds: ['user-2'],
           communityTaskType: 'youtube_watch_sub',
           mediaLink: 'https://youtube.com/@RianHidayatTech',
           platform: 'youtube',
@@ -682,6 +669,7 @@ function saveDatabase() {
       tasks,
       notifications,
       referrals,
+      websiteConfig,
       savedAt: new Date().toISOString(),
     };
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
@@ -759,10 +747,10 @@ async function startServer() {
       encryptedData: newTaskData.encryptedData,
       status: newTaskData.status || 'todo',
       priority: newTaskData.priority || 'medium',
-      creatorId: newTaskData.creatorId || 'user-1',
-      creatorName: newTaskData.creatorName || 'Adrian Pratama',
-      assigneeId: newTaskData.assigneeId || 'user-1',
-      assigneeName: newTaskData.assigneeName || 'Adrian Pratama',
+      creatorId: newTaskData.creatorId || teamMembers[0]?.id || 'user-2',
+      creatorName: newTaskData.creatorName || teamMembers[0]?.name || 'Siti Rahmawati',
+      assigneeId: newTaskData.assigneeId || teamMembers[0]?.id || 'user-2',
+      assigneeName: newTaskData.assigneeName || teamMembers[0]?.name || 'Siti Rahmawati',
       assigneeAvatar: newTaskData.assigneeAvatar,
       buddyId: newTaskData.buddyId,
       buddyName: newTaskData.buddyName,
@@ -954,9 +942,9 @@ async function startServer() {
 
     const newComment: TaskComment = {
       id: `comm-${Date.now()}`,
-      userId: userId || 'user-1',
-      userName: userName || 'Adrian Pratama',
-      userAvatar: userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      userId: userId || teamMembers[0]?.id || 'user-2',
+      userName: userName || teamMembers[0]?.name || 'Member TBK',
+      userAvatar: userAvatar || teamMembers[0]?.avatar,
       text: text || '',
       createdAt: new Date().toISOString(),
       isEncrypted: !!isEncrypted,
@@ -1136,7 +1124,7 @@ async function startServer() {
         isEncrypted: false,
         status: 'in_progress',
         priority: 'urgent',
-        creatorId: adminUser?.id || 'user-1',
+        creatorId: adminUser?.id || 'admin-official',
         creatorName: adminUser?.name || 'Admin Official TBK',
         assigneeId: newMember.id,
         assigneeName: newMember.name,
@@ -1151,7 +1139,7 @@ async function startServer() {
         comments: [
           {
             id: `comm-init-${Date.now()}`,
-            userId: adminUser?.id || 'user-1',
+            userId: adminUser?.id || 'admin-official',
             userName: adminUser?.name || 'Admin TBK',
             userAvatar: adminUser?.avatar,
             text: `Selamat datang ${newMember.name}! Silakan selesaikan tugas follow sosmed official kami agar profil Anda diverifikasi penuh.`,
@@ -1407,7 +1395,7 @@ async function startServer() {
 
     // Update admin user social accounts
     teamMembers.forEach((m) => {
-      if (m.userType === 'admin' || m.id === 'user-1') {
+      if (m.userType === 'admin') {
         m.socialAccounts = {
           ...m.socialAccounts,
           ...socialAccounts,
@@ -1484,9 +1472,9 @@ async function startServer() {
           isEncrypted: false,
           status: 'todo',
           priority: 'urgent',
-          creatorId: 'user-1',
+          creatorId: 'admin-official',
           creatorName: 'Admin Official TBK',
-          assigneeId: 'user-1',
+          assigneeId: 'all',
           assigneeName: 'Semua Member Baru',
           dueDate: new Date(Date.now() + 86400000 * 7).toISOString(),
           category: 'algorithm_growth',
@@ -1537,6 +1525,25 @@ async function startServer() {
       socialAccounts,
       mandatoryTask,
     });
+  });
+
+  // GET Website Online Config (Google Firebase synced)
+  app.get('/api/admin/website-config', (req: Request, res: Response) => {
+    res.json({ success: true, config: websiteConfig });
+  });
+
+  // POST Website Online Config (Admin updates website online with Firebase sync)
+  app.post('/api/admin/website-config', (req: Request, res: Response) => {
+    const updated = req.body;
+    websiteConfig = {
+      ...websiteConfig,
+      ...updated,
+      lastUpdatedOnline: new Date().toISOString(),
+      updatedBy: req.body?.updatedBy || 'Administrator Resmi TBK',
+    };
+    saveDatabase();
+    broadcastEvent('website_config_updated', websiteConfig);
+    res.json({ success: true, config: websiteConfig });
   });
 
   // GET Notifications

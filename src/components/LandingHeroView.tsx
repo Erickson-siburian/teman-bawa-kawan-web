@@ -17,20 +17,23 @@ import {
   HeartHandshake,
 } from 'lucide-react';
 import { LogoBrand, Logo } from './Logo';
-import { TeamMember } from '../types';
+import { TeamMember, WebsiteOnlineConfig } from '../types';
 import { TentangKamiModal } from './TentangKamiModal';
 import { LayananFiturModal } from './LayananFiturModal';
 import { HeroIllustration } from './HeroIllustration';
+import { AnnouncementTicker } from './AnnouncementTicker';
 
 interface LandingHeroViewProps {
   onEnterDashboard: (tab?: 'board' | 'calendar' | 'gamification' | 'analytics') => void;
   currentUser: TeamMember;
   allMembers: TeamMember[];
   isLoggedIn: boolean;
-  onOpenAuthModal: (mode?: 'login' | 'register' | 'admin_login') => void;
+  onOpenAuthModal: (mode?: 'login' | 'register') => void;
   onLogout?: () => void;
   onOpenEncryptionModal?: () => void;
   keyFingerprint?: string;
+  websiteConfig?: WebsiteOnlineConfig;
+  onOpenAdminFirebase?: () => void;
 }
 
 export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
@@ -40,12 +43,17 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
   isLoggedIn,
   onOpenAuthModal,
   onLogout,
+  websiteConfig,
+  onOpenAdminFirebase,
 }) => {
   const [isTentangKamiOpen, setIsTentangKamiOpen] = useState(false);
   const [isLayananFiturOpen, setIsLayananFiturOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative overflow-x-hidden selection:bg-amber-400 selection:text-slate-900">
+      {/* Live Announcement Ticker Updated via Firebase */}
+      {websiteConfig && <AnnouncementTicker config={websiteConfig} />}
+
       {/* Modals for Navbar Items */}
       <TentangKamiModal
         isOpen={isTentangKamiOpen}
@@ -212,22 +220,12 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
                 )}
               </div>
             ) : (
-              /* If NOT Logged In: NO "BUKA PAPAN TUGAS", Show LOGIN and DAFTAR buttons */
+              /* If NOT Logged In: Show LOGIN and DAFTAR buttons for members */
               <div className="flex items-center gap-2 sm:gap-3">
-                <button
-                  id="navbar-btn-admin"
-                  onClick={() => onOpenAuthModal('admin_login')}
-                  className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-black text-amber-300 hover:text-amber-100 bg-amber-950/50 hover:bg-amber-900/60 border border-amber-500/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  title="Login Khusus Administrator"
-                >
-                  <span>👑</span>
-                  <span>LOGIN ADMIN</span>
-                </button>
-
                 <button
                   id="navbar-btn-login"
                   onClick={() => onOpenAuthModal('login')}
-                  className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-emerald-100 hover:text-white hover:bg-emerald-900/40 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-emerald-100 hover:text-white hover:bg-emerald-900/40 transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   <span>LOGIN</span>
@@ -260,12 +258,13 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
 
             {/* Main Headline */}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.15]">
-              Wadah Saling Support &amp; Kembangkan Akun Media Sosial Bersama
+              {websiteConfig?.heroHeadline || 'Wadah Saling Support & Kembangkan Akun Media Sosial Bersama'}
             </h1>
 
             {/* Italic Accent Subtitle */}
             <p className="text-lg sm:text-xl font-medium italic text-amber-300/90 leading-snug">
-              Gotong Royong Organik Sesama Kreator untuk Mengembangkan Akun atau Channel Apapun Jenisnya
+              {websiteConfig?.heroSubtitle ||
+                'Gotong Royong Organik Sesama Kreator untuk Mengembangkan Akun atau Channel Apapun Jenisnya'}
             </p>
 
             {/* Rich Explanatory Paragraphs */}
@@ -464,6 +463,18 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
               <span className="text-emerald-200/40 cursor-default">
                 Member Aktif
               </span>
+            )}
+
+            {onOpenAdminFirebase && (
+              <button
+                type="button"
+                onClick={onOpenAdminFirebase}
+                className="text-emerald-300/40 hover:text-amber-400 transition-colors flex items-center gap-1.5 cursor-pointer"
+                title="Portal Khusus Administrator (Update Website via Google Firebase)"
+              >
+                <span>👑</span>
+                <span>Portal Admin (Firebase)</span>
+              </button>
             )}
           </div>
         </div>

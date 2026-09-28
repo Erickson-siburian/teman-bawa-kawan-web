@@ -1,0 +1,90 @@
+{
+  "entities": {
+    "WebsiteConfig": {
+      "title": "WebsiteConfig",
+      "description": "Pengaturan live website yang dapat diperbarui secara online oleh administrator via Google Firebase",
+      "type": "object",
+      "properties": {
+        "siteTitle": { "type": "string", "description": "Judul website resmi" },
+        "heroHeadline": { "type": "string", "description": "Tagline utama hero" },
+        "heroSubtitle": { "type": "string", "description": "Sub-tagline penjelasan platform" },
+        "announcementText": { "type": "string", "description": "Teks pengumuman banner berjalan" },
+        "isAnnouncementActive": { "type": "boolean", "description": "Status aktif banner pengumuman" },
+        "announcementType": { "type": "string", "enum": ["info", "success", "warning", "alert"], "description": "Tipe tampilan banner" },
+        "maintenanceMode": { "type": "boolean", "description": "Mode pemeliharaan website" },
+        "registrationOpen": { "type": "boolean", "description": "Status pembukaan pendaftaran member baru" },
+        "lastUpdatedOnline": { "type": "string", "format": "date-time", "description": "Waktu terakhir website diperbarui di Firebase" },
+        "updatedBy": { "type": "string", "description": "Identitas administrator yang memperbarui" }
+      },
+      "required": ["siteTitle", "lastUpdatedOnline"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Tugas kolaborasi dan tugas broadcast komunitas untuk seluruh peserta",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["todo", "in_progress", "review", "done"] },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "assigneeId": { "type": "string" },
+        "assigneeName": { "type": "string" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "assignedToAll": { "type": "boolean" },
+        "communityTaskType": { "type": "string" },
+        "mediaLink": { "type": "string" }
+      },
+      "required": ["title", "status"]
+    },
+    "TeamMember": {
+      "title": "TeamMember",
+      "description": "Data profil member/peserta komunitas Teman Bawa Kawan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "userType": { "type": "string", "enum": ["user", "admin"] },
+        "role": { "type": "string" },
+        "gender": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "userType"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Pengumuman dan buletin resmi komunitas diupdate online",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "publishedAt": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["title", "content"]
+    }
+  },
+  "firestore": {
+    "/website_config/{configId}": {
+      "schema": "WebsiteConfig",
+      "description": "Konfigurasi online website yang diperbarui oleh Admin via Google Firebase"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Koleksi tugas dan misi broadcast komunitas"
+    },
+    "/members/{memberId}": {
+      "schema": "TeamMember",
+      "description": "Koleksi direktori member komunitas"
+    },
+    "/announcements/{announcementId}": {
+      "schema": "Announcement",
+      "description": "Koleksi pengumuman resmi dan broadcast online"
+    }
+  }
+}

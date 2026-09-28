@@ -432,7 +432,7 @@ export const CommunityBroadcastTaskModal: React.FC<CommunityBroadcastTaskModalPr
           {/* Footer Submit */}
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
             <div className="text-[11px] text-slate-500 hidden sm:block">
-              ✨ Hadiah: <strong className="text-amber-700">+50 XP</strong> untuk setiap peserta yang menyelesaikan.
+              ✨ Gotong Royong: Tugas disiarkan ke seluruh peserta untuk saling support.
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">

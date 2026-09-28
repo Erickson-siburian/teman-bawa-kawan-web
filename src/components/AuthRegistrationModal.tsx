@@ -289,96 +289,13 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     }, 1200);
   };
 
-  // Default Admin Reference
-  const defaultAdminAccount: TeamMember = {
-    id: 'user-1',
-    name: 'Adrian & Andrew',
-    email: 'haihaihai9191@gmail.com',
-    password: 'password123',
-    userType: 'admin',
-    role: 'Wiraswasta / Pedagang & Ambassador TBK (Admin)',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    gender: 'Laki-Laki',
-    phoneNumber: '081298765432',
-    occupation: 'Wiraswasta / Pedagang',
-    socialAccounts: {
-      instagram: '@adrian_andrew.id',
-      youtube: 'AdrianAndrewOfficial',
-      googleMap: 'Adrian Local Guide',
-      facebook: 'Adrian Andrew ID',
-      googlePlaystore: 'adrian.reviewer',
-      threads: '@adrian_andrew.id',
-      tiktok: '@adrianandrew_tiktok',
-      linkedIn: 'adrian-andrew',
-      spotify: 'Adrian Andrew Podcast',
-      detik: 'adrian_komentar',
-      xTwitter: '@adrian_andrew',
-      whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
-    },
-    creatorNiche: 'Multiplatform Sinergi',
-    primaryPlatform: 'Instagram',
-    monetizationStatus: 'monetized',
-    xp: 1420,
-    level: 4,
-    levelTitle: 'Master Monetisasi TBK',
-    streak: 9,
-    referralCode: 'TBK-ADRIAN-88',
-    referralPoints: 340,
-    referralsCount: 6,
-    buddySynergyScore: 94,
-    completedTasksCount: 18,
-    onTimeRate: 92,
-    status: 'online',
-    socialFollowProof: {
-      allCompleted: true,
-      completedAt: '2026-01-01T00:00:00Z',
-    },
-    joinedAt: '2026-01-15T08:30:00Z',
-  };
-
-  // Standard User Login Submit (Also allows seamless Admin login if admin credentials entered)
+  // Standard User Login Submit
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
     const target = loginIdentifier.trim().toLowerCase();
     const cleanPhone = loginIdentifier.replace(/[^0-9]/g, '');
-
-    // Check if user is logging in with Admin credentials
-    const isAdminTarget =
-      target === 'admin' ||
-      target === 'hai' ||
-      target === 'haihaihai9191@gmail.com' ||
-      target === 'adrian & andrew' ||
-      target === 'adrian' ||
-      target === 'andrew' ||
-      (cleanPhone.length >= 8 && cleanPhone === '081298765432');
-
-    if (isAdminTarget) {
-      const validAdminPasswords = ['password123', 'admin123', 'admin'];
-      const foundAdmin = existingMembers.find(
-        (m) => m.id === 'user-1' || m.email.toLowerCase() === 'haihaihai9191@gmail.com' || m.userType === 'admin'
-      );
-      if (foundAdmin && foundAdmin.password) {
-        validAdminPasswords.push(foundAdmin.password);
-      }
-
-      if (!validAdminPasswords.includes(loginPassword)) {
-        setErrorMessage('Password yang Anda masukkan salah. Silakan coba lagi (default password admin: password123).');
-        return;
-      }
-
-      const adminObj: TeamMember = {
-        ...(foundAdmin || defaultAdminAccount),
-        userType: 'admin',
-        password: 'password123',
-        socialFollowProof: { allCompleted: true, completedAt: '2026-01-01T00:00:00Z' },
-      };
-
-      onAuthSuccess(adminObj, false);
-      onClose();
-      return;
-    }
 
     const matched = existingMembers.find((m) => {
       const matchEmail = m.email.toLowerCase() === target;
@@ -389,110 +306,70 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     });
 
     if (matched) {
-      if (matched.password && matched.password !== loginPassword && loginPassword !== 'password123') {
+      if (matched.password && matched.password !== loginPassword) {
         setErrorMessage('Password yang Anda masukkan salah. Silakan coba lagi.');
         return;
       }
       onAuthSuccess(matched, false);
       onClose();
     } else {
-      setErrorMessage('User ID (Nama, Email, atau No. HP) tidak ditemukan dalam database member.');
+      setErrorMessage('Akun member (Nama, Email, atau No. HP) tidak ditemukan. Silakan periksa kembali atau daftar baru.');
     }
   };
 
-  // Admin Dedicated Login Submit
+  // Dedicated Admin Login Submit (Guarded with Master Passkey)
   const handleAdminLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    const target = adminIdentifier.trim().toLowerCase();
-    const cleanPhone = adminIdentifier.replace(/[^0-9]/g, '');
+    const validMasterKeys = ['tbk-admin-2026', 'admin-tbk-firebase', 'admin2026'];
+    const pass = adminPassword.trim().toLowerCase();
 
-    const validPasswords = ['password123', 'admin123', 'admin'];
-    const foundAdmin = existingMembers.find(
-      (m) =>
-        m.id === 'user-1' ||
-        m.email.toLowerCase() === 'haihaihai9191@gmail.com' ||
-        m.userType === 'admin' ||
-        m.role?.toLowerCase().includes('admin')
-    );
-    if (foundAdmin && foundAdmin.password) {
-      validPasswords.push(foundAdmin.password);
-    }
-
-    const isAdminTarget =
-      target === 'admin' ||
-      target === 'hai' ||
-      target === 'haihaihai9191@gmail.com' ||
-      target === 'adrian & andrew' ||
-      target === 'adrian' ||
-      target === 'andrew' ||
-      (cleanPhone.length >= 8 && cleanPhone === '081298765432');
-
-    if (isAdminTarget) {
-      if (!validPasswords.includes(adminPassword)) {
-        setErrorMessage('Password Administrator salah. Silakan periksa kembali password Anda (default: password123).');
-        return;
-      }
-
-      const adminObj: TeamMember = {
-        ...(foundAdmin || defaultAdminAccount),
-        userType: 'admin',
-        password: 'password123',
-        socialFollowProof: { allCompleted: true, completedAt: '2026-01-01T00:00:00Z' },
-      };
-
-      onAuthSuccess(adminObj, false);
-      onClose();
+    if (!validMasterKeys.includes(pass)) {
+      setErrorMessage('Kunci Rahasia Administrator salah. Akses administrator ditolak.');
       return;
     }
 
-    // Cari akun admin lain dari database
-    const matchedAdmin = existingMembers.find((m) => {
-      const isAdminRole = m.userType === 'admin' || m.role?.toLowerCase().includes('admin');
-      const matchEmail = m.email.toLowerCase() === target;
-      const matchName = m.name.toLowerCase() === target;
-      return isAdminRole && (matchEmail || matchName);
-    });
+    const adminObj: TeamMember = {
+      id: `admin-${Date.now()}`,
+      name: 'Administrator Resmi TBK',
+      email: 'admin.resmi@temanbawakawan.com',
+      userType: 'admin',
+      role: 'Administrator Sistem & Cloud Firebase',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      gender: 'Laki-Laki',
+      phoneNumber: '081298765432',
+      occupation: 'Pengelola Komunitas & Webmaster',
+      socialAccounts: {
+        instagram: '@adrian_andrew.id',
+        youtube: 'https://youtube.com/@adrian_andrew.id',
+        whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+      },
+      creatorNiche: 'Multiplatform Sinergi',
+      primaryPlatform: 'YouTube',
+      monetizationStatus: 'monetized',
+      xp: 2500,
+      level: 5,
+      levelTitle: 'Super Administrator TBK',
+      streak: 15,
+      referralCode: 'TBK-ADMIN-MASTER',
+      referralPoints: 1000,
+      referralsCount: 25,
+      buddySynergyScore: 99,
+      completedTasksCount: 50,
+      onTimeRate: 100,
+      status: 'online',
+      socialFollowProof: { allCompleted: true, completedAt: new Date().toISOString() },
+      joinedAt: new Date().toISOString(),
+    };
 
-    if (matchedAdmin) {
-      if (matchedAdmin.password && matchedAdmin.password !== adminPassword && !validPasswords.includes(adminPassword)) {
-        setErrorMessage('Password Administrator salah. Silakan periksa kembali password Anda.');
-        return;
-      }
-      onAuthSuccess(
-        {
-          ...matchedAdmin,
-          userType: 'admin',
-          socialFollowProof: { allCompleted: true, completedAt: '2026-01-01T00:00:00Z' },
-        },
-        false
-      );
-      onClose();
-      return;
-    }
-
-    setErrorMessage(
-      'Akun administrator tidak ditemukan. Pastikan Anda memasukkan username "admin" atau email "haihaihai9191@gmail.com" dengan password "password123".'
-    );
+    onAuthSuccess(adminObj, false);
+    onClose();
   };
 
   const handleQuickLoginAs = (member: TeamMember) => {
-    const isAdm =
-      member.id === 'user-1' ||
-      member.email.toLowerCase() === 'haihaihai9191@gmail.com' ||
-      member.userType === 'admin';
-
-    const processed: TeamMember = isAdm
-      ? {
-          ...member,
-          userType: 'admin',
-          password: 'password123',
-          socialFollowProof: { allCompleted: true, completedAt: '2026-01-01T00:00:00Z' },
-        }
-      : member;
-
-    onAuthSuccess(processed, false);
+    // Members can quickly login as their member profile; admin accounts are not accessible via quick login
+    onAuthSuccess(member, false);
     onClose();
   };
 
@@ -538,30 +415,13 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                   setMode('login');
                   setErrorMessage('');
                 }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
                   mode === 'login'
                     ? 'bg-amber-400 text-slate-950 shadow-xs'
                     : 'text-white hover:bg-white/10'
                 }`}
               >
-                LOGIN USER
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('admin_login');
-                  setErrorMessage('');
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 ${
-                  mode === 'admin_login'
-                    ? 'bg-amber-300 text-amber-950 shadow-xs ring-1 ring-amber-400'
-                    : 'text-amber-200 hover:bg-white/10'
-                }`}
-                title="Login Khusus Administrator"
-              >
-                <span>👑</span>
-                <span>ADMIN</span>
+                LOGIN MEMBER
               </button>
             </div>
 
@@ -1403,21 +1263,13 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
               </div>
             </div>
 
-            <div className="text-center pt-2 flex items-center justify-between text-xs">
+            <div className="text-center pt-2 flex items-center justify-center text-xs">
               <button
                 type="button"
                 onClick={() => setMode('register')}
                 className="font-bold text-emerald-700 hover:underline cursor-pointer"
               >
-                ← Belum punya akun? Daftar Sekarang
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMode('admin_login')}
-                className="font-bold text-amber-700 hover:underline cursor-pointer flex items-center gap-1"
-              >
-                <span>👑 Login Khusus Admin →</span>
+                ← Belum punya akun? Daftar Member Baru Sekarang
               </button>
             </div>
           </div>
@@ -1444,32 +1296,16 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                 </div>
               </div>
 
-              {/* Clear Role Comparison Card */}
-              <div className="mt-4 pt-3 border-t border-amber-200/80 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              {/* Protected Notice */}
+              <div className="mt-4 pt-3 border-t border-amber-200/80 text-xs">
                 <div className="p-3 rounded-xl bg-white border border-amber-200 shadow-2xs">
                   <div className="flex items-center gap-1.5 font-black text-amber-950 mb-1">
-                    <span>👑 Akun Administrator:</span>
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Akses Dilindungi Kunci Rahasia Administrator:</span>
                   </div>
-                  <ul className="space-y-1 text-[11px] text-slate-600 list-disc list-inside">
-                    <li>Username: <strong>admin</strong> atau <strong>haihaihai9191@gmail.com</strong></li>
-                    <li>Password: <strong>password123</strong></li>
-                    <li>Menu khusus <strong>👑 Monitor Tugas Member</strong></li>
-                    <li>Fitur <strong>EDIT &amp; HAPUS MEMBER</strong> aktif</li>
-                    <li>Atur link medsos resmi &amp; verifikasi bukti YouTube</li>
-                  </ul>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
-                  <div className="flex items-center gap-1.5 font-black text-slate-900 mb-1">
-                    <span>👤 Akun User / Member:</span>
-                  </div>
-                  <ul className="space-y-1 text-[11px] text-slate-600 list-disc list-inside">
-                    <li>Dibuat melalui pendaftaran mandiri</li>
-                    <li>Wajib nonton YouTube 2 menit, follow IG &amp; join WA</li>
-                    <li>Hanya melihat papan tugas gotong royong komunitas</li>
-                    <li><strong>Tidak bisa edit/hapus</strong> data anggota lain</li>
-                    <li>Privasi data terlindungi aman</li>
-                  </ul>
+                  <p className="text-[11px] text-slate-600">
+                    Akun administrator publik ditiadakan untuk menjaga keamanan. Masukkan Kunci Rahasia Administrator (Master Passkey) untuk mengakses dashboard pengelola dan fitur Update Website Google Firebase.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1478,26 +1314,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
             <form onSubmit={handleAdminLoginSubmit} className="space-y-4 max-w-md mx-auto">
               <div>
                 <label className="block text-xs font-black text-amber-950 uppercase mb-1">
-                  Username / Email Administrator *
-                </label>
-                <div className="flex rounded-md shadow-2xs border border-amber-300 focus-within:border-amber-500 overflow-hidden bg-white">
-                  <div className="px-3 bg-amber-100/60 border-r border-amber-300 flex items-center justify-center text-amber-800">
-                    <KeyRound className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={adminIdentifier}
-                    onChange={(e) => setAdminIdentifier(e.target.value)}
-                    placeholder="admin atau haihaihai9191@gmail.com"
-                    className="flex-1 px-3 py-2.5 text-sm text-slate-900 focus:outline-hidden"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-amber-950 uppercase mb-1">
-                  Password Administrator *
+                  Kunci Rahasia Administrator (Master Passkey) *
                 </label>
                 <div className="flex rounded-md shadow-2xs border border-amber-300 focus-within:border-amber-500 overflow-hidden bg-white">
                   <div className="px-3 bg-amber-100/60 border-r border-amber-300 flex items-center justify-center text-amber-800">
@@ -1508,39 +1325,29 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                     required
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="flex-1 px-3 py-2.5 text-sm text-slate-900 focus:outline-hidden"
+                    placeholder="Masukkan master key admin..."
+                    className="flex-1 px-3 py-2.5 text-sm text-slate-900 font-mono focus:outline-hidden"
                   />
                   <button
                     type="button"
                     onClick={() => setShowAdminPassword(!showAdminPassword)}
                     className="px-3 text-slate-400 hover:text-slate-600 focus:outline-hidden"
-                    title={showAdminPassword ? 'Sembunyikan password' : 'Lihat password'}
+                    title={showAdminPassword ? 'Sembunyikan' : 'Lihat'}
                   >
                     {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Master passkey default: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700 font-mono">tbk-admin-2026</code>
+                </p>
               </div>
-
-              {/* 1-Click Quick Fill Button for testing */}
-              <button
-                type="button"
-                onClick={() => {
-                  setAdminIdentifier('admin');
-                  setAdminPassword('password123');
-                }}
-                className="w-full py-2 px-3 rounded-xl bg-amber-100/70 hover:bg-amber-200/80 text-amber-950 font-bold text-xs border border-amber-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>Klik Di Sini: Isi Kredensial Default Admin (Username: admin | Pass: password123)</span>
-              </button>
 
               <button
                 type="submit"
                 className="w-full py-3 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 mt-2"
               >
                 <span>👑</span>
-                <span>MASUK SEBAGAI ADMINISTRATOR</span>
+                <span>VERIFIKASI &amp; MASUK ADMIN</span>
               </button>
             </form>
 

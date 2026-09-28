@@ -15,10 +15,23 @@ import { PostRegisterOrientationModal } from './components/PostRegisterOrientati
 import { EditMemberModal } from './components/EditMemberModal';
 import { DeleteMemberConfirmModal } from './components/DeleteMemberConfirmModal';
 import { CommunityBroadcastTaskModal } from './components/CommunityBroadcastTaskModal';
-import { NotificationItem, ReferralRecord, Task, TaskStatus, TeamMember, MemberSocialAccounts, SocialFollowProof } from './types';
+import { AdminFirebaseOnlineManagerModal } from './components/AdminFirebaseOnlineManagerModal';
+import { AdminAccessGateModal } from './components/AdminAccessGateModal';
+import { AnnouncementTicker } from './components/AnnouncementTicker';
+import {
+  NotificationItem,
+  ReferralRecord,
+  Task,
+  TaskStatus,
+  TeamMember,
+  MemberSocialAccounts,
+  WebsiteOnlineConfig,
+  SocialFollowProof,
+} from './types';
 import { syncManager } from './lib/syncManager';
 import { playTaskDoneChime, playLevelUpFanfare, playNotificationTone } from './lib/audio';
 import { initialTeamMembers, initialTasks, initialNotifications, initialReferrals } from './data/initialData';
+import { getStoredWebsiteConfig, subscribeToWebsiteConfigOnline } from './services/firebaseService';
 import confetti from 'canvas-confetti';
 
 export default function App() {
@@ -29,74 +42,39 @@ export default function App() {
   const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'admin_login'>('register');
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('register');
   const [isAdminSocialsModalOpen, setIsAdminSocialsModalOpen] = useState(false);
+  const [isAdminFirebaseModalOpen, setIsAdminFirebaseModalOpen] = useState(false);
+  const [isAdminAccessGateOpen, setIsAdminAccessGateOpen] = useState(false);
   const [isOrientationModalOpen, setIsOrientationModalOpen] = useState(false);
   const [orientationMember, setOrientationMember] = useState<TeamMember | null>(null);
+
+  // Live Website Config & Google Firebase State
+  const [websiteConfig, setWebsiteConfig] = useState<WebsiteOnlineConfig>(getStoredWebsiteConfig());
 
   // Community Broadcast Task & Calendar Selection States
   const [isBroadcastTaskModalOpen, setIsBroadcastTaskModalOpen] = useState(false);
   const [broadcastTaskCreator, setBroadcastTaskCreator] = useState<TeamMember | undefined>(undefined);
   const [selectedMemberIdForCalendar, setSelectedMemberIdForCalendar] = useState<string | null>(null);
 
-  // Edit & Delete Member States (User Request 3)
+  // Edit & Delete Member States
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [isEditMemberModalOpen, setIsEditMemberModalOpen] = useState(false);
   const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null);
   const [isDeleteMemberModalOpen, setIsDeleteMemberModalOpen] = useState(false);
 
-  const [officialAdminSocials, setOfficialAdminSocials] = useState<MemberSocialAccounts>({
-    instagram: '@adrian_andrew.id',
-    youtube: 'https://youtube.com/@adrian_andrew.id',
-    tiktok: '@adrianandrew_tiktok',
-    facebook: 'Adrian Andrew ID',
-    whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
-  });
-
-  const [currentUser, setCurrentUser] = useState<TeamMember>({
-    id: 'user-1',
-    name: 'Adrian & Andrew',
-    email: 'haihaihai9191@gmail.com',
-    password: 'password123',
-    userType: 'admin',
-    role: 'Wiraswasta / Pedagang & Ambassador TBK (Admin)',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    gender: 'Laki-Laki',
-    phoneNumber: '081298765432',
-    occupation: 'Wiraswasta / Pedagang',
-    socialAccounts: {
+  const [officialAdminSocials, setOfficialAdminSocials] = useState<MemberSocialAccounts>(
+    websiteConfig.officialSocials || {
       instagram: '@adrian_andrew.id',
-      youtube: 'AdrianAndrewOfficial',
-      googleMap: 'Adrian Local Guide',
-      facebook: 'Adrian Andrew ID',
-      googlePlaystore: 'adrian.reviewer',
-      threads: '@adrian_andrew.id',
+      youtube: 'https://youtube.com/@adrian_andrew.id',
       tiktok: '@adrianandrew_tiktok',
-      linkedIn: 'adrian-andrew',
-      spotify: 'Adrian Andrew Podcast',
-      detik: 'adrian_komentar',
-      xTwitter: '@adrian_andrew',
-    },
-    creatorNiche: 'Multiplatform Sinergi',
-    primaryPlatform: 'Instagram',
-    monetizationStatus: 'monetized',
-    xp: 1420,
-    level: 4,
-    levelTitle: 'Master Monetisasi TBK',
-    streak: 9,
-    referralCode: 'TBK-ADRIAN-88',
-    referralPoints: 340,
-    referralsCount: 6,
-    buddySynergyScore: 94,
-    completedTasksCount: 18,
-    onTimeRate: 92,
-    status: 'online',
-    socialFollowProof: {
-      allCompleted: true,
-      completedAt: '2026-01-01T00:00:00Z',
-    },
-    joinedAt: '2026-01-15T08:30:00Z',
-  });
+      facebook: 'Adrian Andrew ID',
+      whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+    }
+  );
+
+  // Default currentUser is a regular member (user-2: Siti Rahmawati, userType: 'user')
+  const [currentUser, setCurrentUser] = useState<TeamMember>(initialTeamMembers[0]);
 
   const [onlineStatus, setOnlineStatus] = useState<'online' | 'offline' | 'syncing'>(
     syncManager.isOnline() ? 'online' : 'offline'
@@ -125,20 +103,10 @@ export default function App() {
 
     const activeTasks = cachedTasks && cachedTasks.length > 0 ? cachedTasks : initialTasks;
     const rawTeam = cachedTeam && cachedTeam.length > 0 ? cachedTeam : initialTeamMembers;
-    const activeTeam = rawTeam.map((m: TeamMember) => {
-      if (m.id === 'user-1' || m.email.toLowerCase() === 'haihaihai9191@gmail.com') {
-        return {
-          ...m,
-          name: m.name || 'Adrian & Andrew',
-          email: 'haihaihai9191@gmail.com',
-          userType: 'admin' as const,
-          password: m.password || 'password123',
-          role: m.role || 'Wiraswasta / Pedagang & Ambassador TBK (Admin)',
-          socialFollowProof: { allCompleted: true, completedAt: '2026-01-01T00:00:00Z' },
-        };
-      }
-      return m;
-    });
+    // Ensure deleted admin account is pruned from any cached browser storage
+    const activeTeam = rawTeam.filter(
+      (m: TeamMember) => m.id !== 'user-1' && m.email.toLowerCase() !== 'haihaihai9191@gmail.com'
+    );
 
     // Ensure member_joined notifications are included even if cachedNotifs exists
     const baseNotifs = cachedNotifs && cachedNotifs.length > 0 ? [...cachedNotifs] : [...initialNotifications];
@@ -178,17 +146,9 @@ export default function App() {
           syncManager.setCachedTasks(tasksRes.tasks);
         }
         if (teamRes && teamRes.success) {
-          const normalizedServerTeam = teamRes.teamMembers.map((m: TeamMember) => {
-            if (m.id === 'user-1' || m.email.toLowerCase() === 'haihaihai9191@gmail.com') {
-              return {
-                ...m,
-                userType: 'admin' as const,
-                password: m.password || 'password123',
-                socialFollowProof: { allCompleted: true, completedAt: '2026-01-01T00:00:00Z' },
-              };
-            }
-            return m;
-          });
+          const normalizedServerTeam = teamRes.teamMembers.filter(
+            (m: TeamMember) => m.id !== 'user-1' && m.email.toLowerCase() !== 'haihaihai9191@gmail.com'
+          );
           setTeamMembers(normalizedServerTeam);
           syncManager.setCachedTeam(normalizedServerTeam);
           const matchedUser = normalizedServerTeam.find((m: TeamMember) => m.id === currentUserIdRef.current);
@@ -301,8 +261,17 @@ export default function App() {
       });
     }, 30000);
 
+    // Subscribe to Google Firebase Firestore website config online
+    const unsubFirebase = subscribeToWebsiteConfigOnline((liveConfig) => {
+      setWebsiteConfig(liveConfig);
+      if (liveConfig.officialSocials) {
+        setOfficialAdminSocials(liveConfig.officialSocials);
+      }
+    });
+
     return () => {
       clearInterval(deadlineChecker);
+      unsubFirebase();
     };
   }, []);
 
@@ -906,12 +875,7 @@ export default function App() {
   };
 
   const handleAuthSuccess = async (member: TeamMember, isRegistration?: boolean) => {
-    // Check if user is Admin (by userType, email, id, or name)
-    const isAdmin =
-      member.userType === 'admin' ||
-      member.email.toLowerCase() === 'haihaihai9191@gmail.com' ||
-      member.id === 'user-1' ||
-      member.name.toLowerCase().includes('adrian');
+    const isAdmin = member.userType === 'admin';
 
     if (isAdmin) {
       member.userType = 'admin';

@@ -33,6 +33,7 @@ interface NavbarProps {
   onSimulatePeerAction: () => void;
   onOpenAdminSocialsModal?: () => void;
   onSelectNotification?: (notif: NotificationItem) => void;
+  onOpenAdminFirebaseModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -50,6 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSimulatePeerAction,
   onOpenAdminSocialsModal,
   onSelectNotification,
+  onOpenAdminFirebaseModal,
 }) => {
   const [showNotifs, setShowNotifs] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -278,6 +280,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Admin Firebase Online Update Button */}
+            {currentUser.userType === 'admin' && onOpenAdminFirebaseModal && (
+              <button
+                type="button"
+                onClick={onOpenAdminFirebaseModal}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer"
+                title="Fitur Khusus Admin: Update Website Online Menggunakan Google Firebase"
+              >
+                <span>🔥</span>
+                <span>Update Website (Firebase)</span>
+              </button>
+            )}
 
             {/* Active User Avatar & Switcher */}
             <div className="relative">

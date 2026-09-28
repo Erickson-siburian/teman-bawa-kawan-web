@@ -40,6 +40,7 @@ interface SidebarProps {
   onOpenAdminSocialsModal?: () => void;
   onSelectNotification?: (notif: NotificationItem) => void;
   onOpenBroadcastTaskModal?: () => void;
+  onOpenAdminFirebaseModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -59,6 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdminSocialsModal,
   onSelectNotification,
   onOpenBroadcastTaskModal,
+  onOpenAdminFirebaseModal,
 }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -183,6 +185,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-600" />
             <span>Atur Medsos Wajib Member</span>
+          </button>
+        )}
+
+        {/* Fitur Khusus Admin: Update Website Online via Google Firebase */}
+        {currentUser.userType === 'admin' && onOpenAdminFirebaseModal && (
+          <button
+            onClick={() => {
+              onOpenAdminFirebaseModal();
+              setMobileOpen(false);
+            }}
+            className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-linear-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 font-black text-xs transition-all cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
+            title="Fitur Khusus Admin: Update Website Online Menggunakan Google Firebase"
+          >
+            <span>🔥</span>
+            <span>Update Website (Firebase)</span>
           </button>
         )}
       </div>
