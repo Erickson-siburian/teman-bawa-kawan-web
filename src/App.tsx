@@ -1068,6 +1068,29 @@ export default function App() {
             setIsLoggedIn(false);
             setActiveTab('landing');
           }}
+          websiteConfig={websiteConfig}
+          onOpenAdminFirebase={() => setIsAdminAccessGateOpen(true)}
+        />
+
+        <AdminAccessGateModal
+          isOpen={isAdminAccessGateOpen}
+          onClose={() => setIsAdminAccessGateOpen(false)}
+          onUnlockSuccess={(adminUser) => {
+            setCurrentUser(adminUser);
+            setIsLoggedIn(true);
+            setIsAdminFirebaseModalOpen(true);
+          }}
+        />
+
+        <AdminFirebaseOnlineManagerModal
+          isOpen={isAdminFirebaseModalOpen}
+          onClose={() => setIsAdminFirebaseModalOpen(false)}
+          currentUser={currentUser}
+          onWebsiteConfigUpdated={(newCfg) => setWebsiteConfig(newCfg)}
+          onOfficialSocialsUpdated={(newSocials) => {
+            setOfficialAdminSocials(newSocials);
+            handleUpdateAdminOfficialSosmed(newSocials, false);
+          }}
         />
 
         <AuthRegistrationModal

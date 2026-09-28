@@ -297,6 +297,52 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     const target = loginIdentifier.trim().toLowerCase();
     const cleanPhone = loginIdentifier.replace(/[^0-9]/g, '');
 
+    // Direct Admin Login fallback if user types "admin" and "password123" (or master passkey)
+    if (
+      (target === 'admin' || target === 'administrator' || target === 'admin@temanbawakawan.com') &&
+      (loginPassword === 'password123' ||
+        ['tbk-admin-2026', 'admin-tbk-firebase', 'admin2026', 'password123'].includes(
+          loginPassword.trim().toLowerCase()
+        ))
+    ) {
+      const adminMember: TeamMember = {
+        id: 'user-admin',
+        name: 'Admin',
+        email: 'admin@temanbawakawan.com',
+        password: 'password123',
+        userType: 'admin',
+        role: 'Administrator Sistem & Cloud Firebase',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        gender: 'Laki-Laki',
+        phoneNumber: '081298765432',
+        occupation: 'Pengelola Komunitas & Webmaster',
+        socialAccounts: {
+          instagram: '@adrian_andrew.id',
+          youtube: 'https://youtube.com/@adrian_andrew.id',
+          whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+        },
+        creatorNiche: 'Multiplatform Sinergi',
+        primaryPlatform: 'YouTube',
+        monetizationStatus: 'monetized',
+        xp: 2500,
+        level: 5,
+        levelTitle: 'Super Administrator TBK',
+        streak: 15,
+        referralCode: 'TBK-ADMIN-MASTER',
+        referralPoints: 1000,
+        referralsCount: 25,
+        buddySynergyScore: 99,
+        completedTasksCount: 50,
+        onTimeRate: 100,
+        status: 'online',
+        socialFollowProof: { allCompleted: true, completedAt: new Date().toISOString() },
+        joinedAt: new Date().toISOString(),
+      };
+      onAuthSuccess(adminMember, false);
+      onClose();
+      return;
+    }
+
     const matched = existingMembers.find((m) => {
       const matchEmail = m.email.toLowerCase() === target;
       const matchName = m.name.toLowerCase() === target;
@@ -306,7 +352,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     });
 
     if (matched) {
-      if (matched.password && matched.password !== loginPassword) {
+      if (matched.password && matched.password !== loginPassword && !(matched.userType === 'admin' && ['tbk-admin-2026', 'admin-tbk-firebase', 'admin2026', 'password123'].includes(loginPassword.trim().toLowerCase()))) {
         setErrorMessage('Password yang Anda masukkan salah. Silakan coba lagi.');
         return;
       }
@@ -322,7 +368,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     e.preventDefault();
     setErrorMessage('');
 
-    const validMasterKeys = ['tbk-admin-2026', 'admin-tbk-firebase', 'admin2026'];
+    const validMasterKeys = ['tbk-admin-2026', 'admin-tbk-firebase', 'admin2026', 'password123'];
     const pass = adminPassword.trim().toLowerCase();
 
     if (!validMasterKeys.includes(pass)) {
@@ -331,9 +377,10 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     }
 
     const adminObj: TeamMember = {
-      id: `admin-${Date.now()}`,
-      name: 'Administrator Resmi TBK',
-      email: 'admin.resmi@temanbawakawan.com',
+      id: 'user-admin',
+      name: 'Admin',
+      email: 'admin@temanbawakawan.com',
+      password: 'password123',
       userType: 'admin',
       role: 'Administrator Sistem & Cloud Firebase',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
@@ -422,6 +469,21 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                 }`}
               >
                 LOGIN MEMBER
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('admin_login');
+                  setErrorMessage('');
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  mode === 'admin_login'
+                    ? 'bg-amber-400 text-slate-950 shadow-xs'
+                    : 'text-amber-200 hover:bg-white/10'
+                }`}
+              >
+                👑 ADMIN
               </button>
             </div>
 

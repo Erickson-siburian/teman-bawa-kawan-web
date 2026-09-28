@@ -26,7 +26,7 @@ export const AdminAccessGateModal: React.FC<AdminAccessGateModalProps> = ({
 
     const clean = adminKey.trim();
     // Valid admin passkeys
-    const validKeys = ['tbk-admin-2026', 'admin-tbk-firebase', 'admin2026'];
+    const validKeys = ['tbk-admin-2026', 'admin-tbk-firebase', 'admin2026', 'password123'];
 
     if (!clean) {
       setErrorMsg('Masukkan Kunci Rahasia Administrator (Admin Passkey).');
