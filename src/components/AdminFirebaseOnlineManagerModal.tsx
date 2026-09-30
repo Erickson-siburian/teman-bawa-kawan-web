@@ -63,6 +63,7 @@ export const AdminFirebaseOnlineManagerModal: React.FC<
   const [announcementType, setAnnouncementType] = useState<'info' | 'success' | 'warning' | 'alert'>('info');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [registrationOpen, setRegistrationOpen] = useState(true);
+  const [requireEmailActivation, setRequireEmailActivation] = useState(false);
 
   // Socials Form State
   const [youtube, setYoutube] = useState('');
@@ -103,6 +104,7 @@ export const AdminFirebaseOnlineManagerModal: React.FC<
       setAnnouncementType(config.announcementType || 'info');
       setMaintenanceMode(config.maintenanceMode ?? false);
       setRegistrationOpen(config.registrationOpen ?? true);
+      setRequireEmailActivation(config.requireEmailActivation ?? false);
 
       const soc = config.officialSocials || {};
       setYoutube(soc.youtube || 'https://youtube.com/@adrian_andrew.id');
@@ -153,6 +155,7 @@ export const AdminFirebaseOnlineManagerModal: React.FC<
       announcementType,
       maintenanceMode,
       registrationOpen,
+      requireEmailActivation,
       officialSocials: updatedSocials,
       lastUpdatedOnline: new Date().toISOString(),
       updatedBy: currentUser.name || 'Administrator TBK',
@@ -365,6 +368,30 @@ export const AdminFirebaseOnlineManagerModal: React.FC<
                       checked={maintenanceMode}
                       onChange={(e) => setMaintenanceMode(e.target.checked)}
                       className="w-4 h-4 accent-red-600"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3 rounded-xl bg-white border border-amber-200 cursor-pointer hover:border-amber-400 transition-colors sm:col-span-2">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-bold text-slate-900">Wajib Aktivasi Email Member Baru</p>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                          requireEmailActivation ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {requireEmailActivation ? 'Aktif (Wajib OTP/Link)' : 'Nonaktif (Langsung Aktif)'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {requireEmailActivation
+                          ? 'Setiap pendaftar baru wajib memasukkan 6 digit kode aktivasi dari email sebelum dapat masuk.'
+                          : 'Pendaftar baru langsung aktif otomatis setelah menyelesaikan misi pendaftaran & orientasi.'}
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={requireEmailActivation}
+                      onChange={(e) => setRequireEmailActivation(e.target.checked)}
+                      className="w-4 h-4 accent-emerald-600 shrink-0"
                     />
                   </label>
                 </div>

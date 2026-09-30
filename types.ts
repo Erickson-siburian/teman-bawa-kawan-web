@@ -143,6 +143,9 @@ export interface TeamMember {
   status: 'online' | 'busy' | 'offline';
   joinedAt?: string;
   badges?: Badge[];
+  isEmailVerified?: boolean;
+  activationCode?: string;
+  activationSentAt?: string;
 }
 
 export interface NotificationItem {
@@ -200,6 +203,7 @@ export interface WebsiteOnlineConfig {
   updatedBy: string;
   firebaseProjectId?: string;
   firebaseStatus: 'connected' | 'syncing' | 'offline_ready';
+  requireEmailActivation?: boolean;
 }
 
 export interface FirebaseConnectionConfig {

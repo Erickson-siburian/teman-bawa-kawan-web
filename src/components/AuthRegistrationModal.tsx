@@ -27,6 +27,11 @@ import {
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { MemberSocialAccounts, TeamMember, SocialFollowProof } from '../types';
+import {
+  saveRegisteredMemberLocally,
+  getStoredRegisteredMembers,
+  generateActivationCode,
+} from '../lib/memberStorage';
 
 interface AuthRegistrationModalProps {
   isOpen: boolean;
@@ -35,6 +40,8 @@ interface AuthRegistrationModalProps {
   onAuthSuccess: (member: TeamMember, isRegistration?: boolean) => void;
   existingMembers: TeamMember[];
   officialSocials?: MemberSocialAccounts;
+  onOpenEmailActivation?: (member: TeamMember) => void;
+  requireEmailActivation?: boolean;
 }
 
 export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
@@ -44,6 +51,8 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   onAuthSuccess,
   existingMembers,
   officialSocials,
+  onOpenEmailActivation,
+  requireEmailActivation = false,
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'admin_login'>(initialMode);
   const [regStep, setRegStep] = useState<1 | 2>(1);
@@ -224,6 +233,8 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       completedAt: new Date().toISOString(),
     };
 
+    const activationPin = generateActivationCode();
+
     const newMember: TeamMember = {
       id: `member-${Date.now()}`,
       name: nama.trim(),
@@ -252,8 +263,15 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       onTimeRate: 100,
       status: 'online',
       joinedAt: new Date().toISOString(),
+      isEmailVerified: !requireEmailActivation,
+      activationCode: activationPin,
+      activationSentAt: new Date().toISOString(),
     };
 
+    // 1. Save member to persistent localStorage IMMEDIATELY so it is NEVER lost
+    saveRegisteredMemberLocally(newMember);
+
+    // 2. Sync to backend API if available
     try {
       await fetch('/api/team', {
         method: 'POST',
@@ -280,13 +298,19 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     }
 
     setRegSuccess(true);
-    await onAuthSuccess(newMember, true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       setIsSubmitting(false);
       setRegSuccess(false);
-      onClose();
-    }, 1200);
+
+      if (requireEmailActivation && onOpenEmailActivation) {
+        onClose();
+        onOpenEmailActivation(newMember);
+      } else {
+        await onAuthSuccess(newMember, true);
+        onClose();
+      }
+    }, 1000);
   };
 
   // Standard User Login Submit
@@ -337,29 +361,68 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
         status: 'online',
         socialFollowProof: { allCompleted: true, completedAt: new Date().toISOString() },
         joinedAt: new Date().toISOString(),
+        isEmailVerified: true,
       };
       onAuthSuccess(adminMember, false);
       onClose();
       return;
     }
 
-    const matched = existingMembers.find((m) => {
-      const matchEmail = m.email.toLowerCase() === target;
-      const matchName = m.name.toLowerCase() === target;
+    // Combine current state with persistent stored registered members to ensure no registered account is missed
+    const storedMembers = getStoredRegisteredMembers();
+    const candidatePool = [...existingMembers, ...storedMembers];
+
+    // Deduplicate candidatePool by id and email
+    const dedupedMap = new Map<string, TeamMember>();
+    candidatePool.forEach((m) => {
+      dedupedMap.set(m.id, m);
+      if (m.email) dedupedMap.set(m.email.toLowerCase(), m);
+    });
+    const uniqueCandidates = Array.from(dedupedMap.values());
+
+    const matched = uniqueCandidates.find((m) => {
+      const matchEmail = (m.email || '').trim().toLowerCase() === target;
+      const matchName = (m.name || '').trim().toLowerCase() === target;
+      const matchFirstName = (m.name || '').trim().toLowerCase().split(' ')[0] === target;
       const memberPhoneClean = (m.phoneNumber || '').replace(/[^0-9]/g, '');
       const matchPhone = cleanPhone.length >= 6 && memberPhoneClean === cleanPhone;
-      return matchEmail || matchName || matchPhone;
+      const matchRefCode = (m.referralCode || '').trim().toLowerCase() === target;
+      return matchEmail || matchName || matchFirstName || matchPhone || matchRefCode;
     });
 
     if (matched) {
-      if (matched.password && matched.password !== loginPassword && !(matched.userType === 'admin' && ['tbk-admin-2026', 'admin-tbk-firebase', 'admin2026', 'password123'].includes(loginPassword.trim().toLowerCase()))) {
+      const isMasterKey = ['tbk-admin-2026', 'admin-tbk-firebase', 'admin2026', 'password123'].includes(
+        loginPassword.trim().toLowerCase()
+      );
+      const isPasswordValid =
+        matched.password === loginPassword ||
+        (matched.userType === 'admin' && isMasterKey) ||
+        !matched.password; // legacy account without password
+
+      if (!isPasswordValid) {
         setErrorMessage('Password yang Anda masukkan salah. Silakan coba lagi.');
         return;
       }
+
+      // Check if email activation is required but not yet verified
+      if (matched.isEmailVerified === false) {
+        if (onOpenEmailActivation) {
+          onClose();
+          onOpenEmailActivation(matched);
+          return;
+        } else {
+          setErrorMessage('Akun Anda belum diaktivasi melalui email. Silakan selesaikan aktivasi email.');
+          return;
+        }
+      }
+
+      saveRegisteredMemberLocally(matched);
       onAuthSuccess(matched, false);
       onClose();
     } else {
-      setErrorMessage('Akun member (Nama, Email, atau No. HP) tidak ditemukan. Silakan periksa kembali atau daftar baru.');
+      setErrorMessage(
+        'Akun member (Nama, Email, atau No. HP) tidak ditemukan. Pastikan data login sesuai dengan data saat mendaftar, atau daftar baru jika belum memiliki akun.'
+      );
     }
   };
 

@@ -18,6 +18,8 @@ import { CommunityBroadcastTaskModal } from './components/CommunityBroadcastTask
 import { AdminFirebaseOnlineManagerModal } from './components/AdminFirebaseOnlineManagerModal';
 import { AdminAccessGateModal } from './components/AdminAccessGateModal';
 import { AnnouncementTicker } from './components/AnnouncementTicker';
+import { EmailActivationModal } from './components/EmailActivationModal';
+import { getStoredRegisteredMembers, saveRegisteredMemberLocally } from './lib/memberStorage';
 import {
   NotificationItem,
   ReferralRecord,
@@ -48,6 +50,8 @@ export default function App() {
   const [isAdminAccessGateOpen, setIsAdminAccessGateOpen] = useState(false);
   const [isOrientationModalOpen, setIsOrientationModalOpen] = useState(false);
   const [orientationMember, setOrientationMember] = useState<TeamMember | null>(null);
+  const [isEmailActivationModalOpen, setIsEmailActivationModalOpen] = useState(false);
+  const [activationPendingMember, setActivationPendingMember] = useState<TeamMember | null>(null);
 
   // Live Website Config & Google Firebase State
   const [websiteConfig, setWebsiteConfig] = useState<WebsiteOnlineConfig>(getStoredWebsiteConfig());
@@ -100,11 +104,20 @@ export default function App() {
     const cachedTasks = syncManager.getCachedTasks();
     const cachedTeam = syncManager.getCachedTeam();
     const cachedNotifs = syncManager.getCachedNotifs();
+    const storedRegistered = getStoredRegisteredMembers();
 
     const activeTasks = cachedTasks && cachedTasks.length > 0 ? cachedTasks : initialTasks;
-    const rawTeam = cachedTeam && cachedTeam.length > 0 ? cachedTeam : initialTeamMembers;
+    
+    // Safely merge initial members, cached team, and persistent registered members
+    const memberMap = new Map<string, TeamMember>();
+    initialTeamMembers.forEach((m) => memberMap.set(m.id, m));
+    if (cachedTeam && Array.isArray(cachedTeam)) {
+      cachedTeam.forEach((m) => memberMap.set(m.id, m));
+    }
+    storedRegistered.forEach((m) => memberMap.set(m.id, m));
+
     // Ensure deleted admin account is pruned from any cached browser storage
-    const activeTeam = rawTeam.filter(
+    const activeTeam = Array.from(memberMap.values()).filter(
       (m: TeamMember) => m.id !== 'user-1' && m.email.toLowerCase() !== 'haihaihai9191@gmail.com'
     );
 
@@ -884,25 +897,38 @@ export default function App() {
         allCompleted: true,
         completedAt: member.socialFollowProof?.completedAt || new Date().toISOString(),
       };
-    } else if (isRegistration || !member.socialFollowProof?.allCompleted) {
+      member.isEmailVerified = true;
+    }
+
+    // 1. ALWAYS persist member to local storage immediately so they can always login
+    saveRegisteredMemberLocally(member);
+
+    // 2. Prepend or update in teamMembers state
+    setTeamMembers((prev) => {
+      const cleanEmail = (member.email || '').trim().toLowerCase();
+      const exists = prev.some(
+        (m) => m.id === member.id || (m.email && m.email.trim().toLowerCase() === cleanEmail)
+      );
+      const updated = exists
+        ? prev.map((m) =>
+            m.id === member.id || (m.email && m.email.trim().toLowerCase() === cleanEmail) ? member : m
+          )
+        : [member, ...prev];
+      syncManager.setCachedTeam(updated);
+      return updated;
+    });
+
+    // 3. Only gate if orientation proof was NOT completed (note: registration Step 2 already fulfills this)
+    if (!isAdmin && !member.socialFollowProof?.allCompleted) {
       setOrientationMember(member);
       setIsOrientationModalOpen(true);
-      // Gated! User CANNOT proceed to board until orientation proof is fulfilled!
       return;
     }
 
     setCurrentUser(member);
     setIsLoggedIn(true);
 
-    // If new member, prepend to teamMembers locally first for immediate responsiveness
-    setTeamMembers((prev) => {
-      const exists = prev.some((m) => m.id === member.id || m.email === member.email);
-      const updated = exists ? prev.map((m) => (m.id === member.id ? member : m)) : [member, ...prev];
-      syncManager.setCachedTeam(updated);
-      return updated;
-    });
-
-    // Send to central server so Admin and all devices receive the new member live
+    // 4. Send to central server so Admin and all devices receive the new member live
     try {
       const res = await fetch('/api/team', {
         method: 'POST',
@@ -910,12 +936,12 @@ export default function App() {
         body: JSON.stringify(member),
       });
       if (res.ok) {
-        const data = await res.json();
-        if (data.teamMembers) {
+        const data = await res.json().catch(() => null);
+        if (data && data.teamMembers) {
           setTeamMembers(data.teamMembers);
           syncManager.setCachedTeam(data.teamMembers);
         }
-        if (data.tasks) {
+        if (data && data.tasks) {
           setTasks(data.tasks);
           syncManager.setCachedTasks(data.tasks);
         }
@@ -1006,12 +1032,20 @@ export default function App() {
         allCompleted: data.youtubeConfirmed && data.instagramConfirmed,
         completedAt: new Date().toISOString(),
       };
-      setTeamMembers((prev) =>
-        prev.map((m) =>
-          m.id === targetMember.id ? { ...m, socialFollowProof: updatedProof } : m
-        )
-      );
-      setCurrentUser((prev) => ({ ...prev, socialFollowProof: updatedProof }));
+      const updatedMember: TeamMember = {
+        ...targetMember,
+        socialFollowProof: updatedProof,
+      };
+      saveRegisteredMemberLocally(updatedMember);
+      setTeamMembers((prev) => {
+        const exists = prev.some((m) => m.id === updatedMember.id);
+        const next = exists
+          ? prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
+          : [updatedMember, ...prev];
+        syncManager.setCachedTeam(next);
+        return next;
+      });
+      setCurrentUser(updatedMember);
     }
 
     setIsLoggedIn(true);
@@ -1100,6 +1134,25 @@ export default function App() {
           onAuthSuccess={handleAuthSuccess}
           existingMembers={teamMembers}
           officialSocials={officialAdminSocials}
+          onOpenEmailActivation={(mem) => {
+            setActivationPendingMember(mem);
+            setIsEmailActivationModalOpen(true);
+          }}
+          requireEmailActivation={websiteConfig.requireEmailActivation}
+        />
+
+        <EmailActivationModal
+          isOpen={isEmailActivationModalOpen}
+          onClose={() => {
+            setIsEmailActivationModalOpen(false);
+            setActivationPendingMember(null);
+          }}
+          member={activationPendingMember}
+          onActivationSuccess={(activatedMember) => {
+            setIsEmailActivationModalOpen(false);
+            setActivationPendingMember(null);
+            handleAuthSuccess(activatedMember, false);
+          }}
         />
 
         <AdminOfficialSocialsModal
@@ -1247,6 +1300,25 @@ export default function App() {
         onAuthSuccess={handleAuthSuccess}
         existingMembers={teamMembers}
         officialSocials={officialAdminSocials}
+        onOpenEmailActivation={(mem) => {
+          setActivationPendingMember(mem);
+          setIsEmailActivationModalOpen(true);
+        }}
+        requireEmailActivation={websiteConfig.requireEmailActivation}
+      />
+
+      <EmailActivationModal
+        isOpen={isEmailActivationModalOpen}
+        onClose={() => {
+          setIsEmailActivationModalOpen(false);
+          setActivationPendingMember(null);
+        }}
+        member={activationPendingMember}
+        onActivationSuccess={(activatedMember) => {
+          setIsEmailActivationModalOpen(false);
+          setActivationPendingMember(null);
+          handleAuthSuccess(activatedMember, false);
+        }}
       />
 
       <AdminOfficialSocialsModal

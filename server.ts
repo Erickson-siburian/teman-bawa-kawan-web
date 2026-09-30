@@ -128,6 +128,8 @@ interface TeamMember {
   onTimeRate: number;
   status: 'online' | 'busy' | 'offline';
   joinedAt?: string;
+  isEmailVerified?: boolean;
+  activationCode?: string;
 }
 
 interface NotificationItem {
@@ -1220,6 +1222,7 @@ async function startServer() {
 
     member.completedTasksCount = (member.completedTasksCount || 0) + memberTasks.length;
     member.xp = (member.xp || 350) + 200;
+    member.isEmailVerified = true;
     member.socialFollowProof = {
       ...(member.socialFollowProof || {}),
       youtubeWatchedSeconds: Math.max(125, member.socialFollowProof?.youtubeWatchedSeconds || 125),

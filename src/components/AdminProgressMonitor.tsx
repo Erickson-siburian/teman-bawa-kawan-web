@@ -835,6 +835,21 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
                             <span>Belum Ada Tugas</span>
                           </span>
                         )}
+
+                        {/* Email Verification Status */}
+                        {m.userType !== 'admin' && (
+                          <div className="mt-1">
+                            {m.isEmailVerified === false ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200">
+                                <span>⏳ Email Belum Aktivasi</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                                <span>✓ Email Terverifikasi</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Completed / Total Count */}
@@ -904,6 +919,17 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
                       {/* Admin Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {m.isEmailVerified === false && onVerifyMember && (
+                            <button
+                              type="button"
+                              onClick={() => onVerifyMember(m.id)}
+                              className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-[11px] shadow-2xs transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                              title="Aktivasi email akun ini secara langsung (Manual Admin Bypass)"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              <span>Aktivasi Akun</span>
+                            </button>
+                          )}
                           {onVerifyMember && item.ongoing > 0 && (
                             <button
                               type="button"

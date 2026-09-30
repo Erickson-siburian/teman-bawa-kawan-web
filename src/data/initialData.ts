@@ -42,6 +42,7 @@ export const initialTeamMembers: TeamMember[] = [
       completedAt: '2026-01-01T00:00:00Z',
     },
     joinedAt: '2026-01-01T00:00:00Z',
+    isEmailVerified: true,
   },
   {
     id: 'user-2',
@@ -76,6 +77,7 @@ export const initialTeamMembers: TeamMember[] = [
     completedTasksCount: 14,
     onTimeRate: 86,
     status: 'online',
+    isEmailVerified: true,
     joinedAt: '2026-09-12T10:15:00Z',
     socialFollowProof: {
       youtubeWatchedSeconds: 140,
@@ -121,6 +123,7 @@ export const initialTeamMembers: TeamMember[] = [
     completedTasksCount: 16,
     onTimeRate: 88,
     status: 'online',
+    isEmailVerified: true,
     joinedAt: '2026-09-20T14:20:00Z',
     socialFollowProof: {
       youtubeWatchedSeconds: 130,
@@ -166,6 +169,7 @@ export const initialTeamMembers: TeamMember[] = [
     completedTasksCount: 10,
     onTimeRate: 90,
     status: 'busy',
+    isEmailVerified: true,
     joinedAt: '2026-09-26T09:45:00Z',
     socialFollowProof: {
       youtubeWatchedSeconds: 145,
@@ -212,6 +216,7 @@ export const initialTeamMembers: TeamMember[] = [
     completedTasksCount: 8,
     onTimeRate: 85,
     status: 'online',
+    isEmailVerified: true,
     joinedAt: '2026-09-27T08:15:00Z',
     socialFollowProof: {
       youtubeWatchedSeconds: 150,
