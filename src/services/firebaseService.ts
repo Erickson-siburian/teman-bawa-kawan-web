@@ -4,10 +4,12 @@ import {
   doc,
   setDoc,
   getDoc,
+  getDocs,
+  collection,
   onSnapshot,
   Firestore,
 } from 'firebase/firestore';
-import { WebsiteOnlineConfig, FirebaseConnectionConfig } from '../types';
+import { WebsiteOnlineConfig, FirebaseConnectionConfig, TeamMember, Task } from '../types';
 
 const STORAGE_KEY_FIREBASE_CONFIG = 'tbk_firebase_connection_config';
 const STORAGE_KEY_WEBSITE_CONFIG = 'tbk_website_online_config';
@@ -34,6 +36,7 @@ export const DEFAULT_WEBSITE_CONFIG: WebsiteOnlineConfig = {
   announcementType: 'info',
   maintenanceMode: false,
   registrationOpen: true,
+  requireEmailActivation: true, // Default to true as requested by user
   officialSocials: {
     instagram: '@adrian_andrew.id',
     youtube: 'https://youtube.com/@adrian_andrew.id',
@@ -296,3 +299,176 @@ export async function testFirebaseConnection(): Promise<{
     };
   }
 }
+
+/**
+ * Sinkronisasi seluruh data Member ke Firebase Firestore (/members collection)
+ */
+export async function syncAllMembersToFirebase(
+  members: TeamMember[]
+): Promise<{ success: boolean; count: number; message: string }> {
+  const fb = initFirebase();
+  if (!fb) {
+    return {
+      success: true,
+      count: members.length,
+      message: `Disimpan secara lokal (${members.length} member siap disinkronkan saat koneksi cloud aktif).`,
+    };
+  }
+
+  try {
+    let pushedCount = 0;
+    for (const member of members) {
+      const memberDocRef = doc(fb.db, 'members', member.id);
+      await setDoc(
+        memberDocRef,
+        {
+          ...member,
+          firestoreSyncedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+      pushedCount++;
+    }
+
+    return {
+      success: true,
+      count: pushedCount,
+      message: `Berhasil mengekspor ${pushedCount} member ke Firestore Cloud (/members).`,
+    };
+  } catch (err: any) {
+    console.warn('Gagal sync members ke Firestore:', err);
+    return {
+      success: false,
+      count: 0,
+      message: `Error sinkronisasi member ke Firestore: ${err?.message || 'Gagal'}. Data tetap aman di penyimpanan lokal.`,
+    };
+  }
+}
+
+/**
+ * Tarik seluruh data Member dari Firebase Firestore (/members collection)
+ */
+export async function fetchMembersFromFirebase(): Promise<{
+  success: boolean;
+  members: TeamMember[];
+  message: string;
+}> {
+  const fb = initFirebase();
+  if (!fb) {
+    return {
+      success: false,
+      members: [],
+      message: 'Koneksi Firebase belum diinisialisasi.',
+    };
+  }
+
+  try {
+    const colRef = collection(fb.db, 'members');
+    const snap = await getDocs(colRef);
+    const remoteMembers: TeamMember[] = [];
+
+    snap.forEach((d) => {
+      remoteMembers.push(d.data() as TeamMember);
+    });
+
+    return {
+      success: true,
+      members: remoteMembers,
+      message: `Berhasil mengimpor ${remoteMembers.length} member dari Cloud Firestore.`,
+    };
+  } catch (err: any) {
+    console.warn('Gagal fetch members dari Firestore:', err);
+    return {
+      success: false,
+      members: [],
+      message: `Gagal menarik data member dari Firestore: ${err?.message || 'Error'}`,
+    };
+  }
+}
+
+/**
+ * Sinkronisasi seluruh Tugas & Kolaborasi ke Firebase Firestore (/tasks collection)
+ */
+export async function syncAllTasksToFirebase(
+  tasks: Task[]
+): Promise<{ success: boolean; count: number; message: string }> {
+  const fb = initFirebase();
+  if (!fb) {
+    return {
+      success: true,
+      count: tasks.length,
+      message: `Disimpan secara lokal (${tasks.length} tugas siap disinkronkan).`,
+    };
+  }
+
+  try {
+    let count = 0;
+    for (const task of tasks) {
+      const taskDocRef = doc(fb.db, 'tasks', task.id);
+      await setDoc(
+        taskDocRef,
+        {
+          ...task,
+          firestoreSyncedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+      count++;
+    }
+
+    return {
+      success: true,
+      count,
+      message: `Berhasil mengekspor ${count} tugas ke Firestore Cloud (/tasks).`,
+    };
+  } catch (err: any) {
+    console.warn('Gagal sync tasks ke Firestore:', err);
+    return {
+      success: false,
+      count: 0,
+      message: `Gagal sinkronisasi tugas ke Firestore: ${err?.message || 'Error'}`,
+    };
+  }
+}
+
+/**
+ * Tarik seluruh Tugas dari Firebase Firestore (/tasks collection)
+ */
+export async function fetchTasksFromFirebase(): Promise<{
+  success: boolean;
+  tasks: Task[];
+  message: string;
+}> {
+  const fb = initFirebase();
+  if (!fb) {
+    return {
+      success: false,
+      tasks: [],
+      message: 'Koneksi Firebase belum diinisialisasi.',
+    };
+  }
+
+  try {
+    const colRef = collection(fb.db, 'tasks');
+    const snap = await getDocs(colRef);
+    const remoteTasks: Task[] = [];
+
+    snap.forEach((d) => {
+      remoteTasks.push(d.data() as Task);
+    });
+
+    return {
+      success: true,
+      tasks: remoteTasks,
+      message: `Berhasil mengimpor ${remoteTasks.length} tugas dari Cloud Firestore.`,
+    };
+  } catch (err: any) {
+    console.warn('Gagal fetch tasks dari Firestore:', err);
+    return {
+      success: false,
+      tasks: [],
+      message: `Gagal menarik data tugas dari Firestore: ${err?.message || 'Error'}`,
+    };
+  }
+}
+

@@ -17,13 +17,15 @@ import {
   X,
   Flame,
   ChevronDown,
+  Database,
+  LogOut,
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { NotificationItem, TeamMember } from '../types';
 
 interface SidebarProps {
-  activeTab: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor';
-  setActiveTab: (tab: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor') => void;
+  activeTab: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor' | 'admin_database';
+  setActiveTab: (tab: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor' | 'admin_database') => void;
   onlineStatus: 'online' | 'offline' | 'syncing';
   outboxCount: number;
   onManualSync: () => void;
@@ -41,6 +43,7 @@ interface SidebarProps {
   onSelectNotification?: (notif: NotificationItem) => void;
   onOpenBroadcastTaskModal?: () => void;
   onOpenAdminFirebaseModal?: () => void;
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -61,6 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectNotification,
   onOpenBroadcastTaskModal,
   onOpenAdminFirebaseModal,
+  onLogout,
 }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -70,7 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const adminMember = allMembers.find((m) => m.userType === 'admin') || allMembers[0];
 
   const navItems: Array<{
-    id: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor';
+    id: 'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor' | 'admin_database';
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     desc: string;
@@ -96,6 +100,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             label: 'Monitor Tugas Member',
             icon: ShieldCheck,
             desc: 'Progres Selesai & Belum',
+            isAdminOnly: true,
+          },
+          {
+            id: 'admin_database' as const,
+            label: 'Admin & Database',
+            icon: Database,
+            desc: 'Sinkronisasi Manual Firebase',
             isAdminOnly: true,
           },
         ]
@@ -516,7 +527,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               )}
             </div>
+
+            {onLogout && (
+              <div className="pt-2 mt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    onLogout();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Keluar / Logout Akun</span>
+                </button>
+              </div>
+            )}
           </div>
+        )}
+
+        {/* Quick Logout Button */}
+        {onLogout && (
+          <button
+            type="button"
+            id="sidebar-quick-logout-btn"
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer mt-1"
+            title="Keluar dari akun Anda dan kembali ke beranda"
+          >
+            <LogOut className="w-3.5 h-3.5 text-rose-600" />
+            <span>Keluar / Logout</span>
+          </button>
         )}
       </div>
     </div>

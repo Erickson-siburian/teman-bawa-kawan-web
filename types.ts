@@ -106,7 +106,9 @@ export interface SocialFollowProof {
   youtubeSubscribed?: boolean;
   youtubeWatchProof?: string;
   youtubeVerifiedAt?: string;
+  youtubeHandleProof?: string;
   instagramFollowed?: boolean;
+  instagramHandleProof?: string;
   tiktokFollowed?: boolean;
   facebookFollowed?: boolean;
   whatsappJoined?: boolean;

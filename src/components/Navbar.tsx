@@ -13,12 +13,14 @@ import {
   Sparkles,
   KeyRound,
   UserCheck,
+  LogOut,
+  Database,
 } from 'lucide-react';
 import { NotificationItem, TeamMember } from '../types';
 
 interface NavbarProps {
-  activeTab: 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor';
-  setActiveTab: (tab: 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor') => void;
+  activeTab: 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor' | 'admin_database';
+  setActiveTab: (tab: 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor' | 'admin_database') => void;
   onlineStatus: 'online' | 'offline' | 'syncing';
   outboxCount: number;
   onManualSync: () => void;
@@ -34,6 +36,7 @@ interface NavbarProps {
   onOpenAdminSocialsModal?: () => void;
   onSelectNotification?: (notif: NotificationItem) => void;
   onOpenAdminFirebaseModal?: () => void;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -52,6 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdminSocialsModal,
   onSelectNotification,
   onOpenAdminFirebaseModal,
+  onLogout,
 }) => {
   const [showNotifs, setShowNotifs] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -133,6 +137,35 @@ export const Navbar: React.FC<NavbarProps> = ({
               <BarChart3 className="w-4 h-4" />
               Analitik Monetisasi
             </button>
+
+            {currentUser.userType === 'admin' && (
+              <>
+                <button
+                  id="nav-tab-admin-monitor"
+                  onClick={() => setActiveTab('admin_monitor')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === 'admin_monitor'
+                      ? 'bg-white text-amber-600 shadow-xs'
+                      : 'text-amber-700 hover:text-amber-900'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4 text-amber-500" />
+                  Monitor
+                </button>
+                <button
+                  id="nav-tab-admin-database"
+                  onClick={() => setActiveTab('admin_database')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    activeTab === 'admin_database'
+                      ? 'bg-white text-emerald-600 shadow-xs'
+                      : 'text-emerald-700 hover:text-emerald-900'
+                  }`}
+                >
+                  <Database className="w-4 h-4 text-emerald-500" />
+                  Database
+                </button>
+              </>
+            )}
           </nav>
 
           {/* Right Action Controls */}
@@ -369,9 +402,39 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </div>
                     )}
                   </div>
+
+                  {onLogout && (
+                    <div className="pt-2 mt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onLogout();
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors cursor-pointer"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Keluar / Logout Akun</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+
+            {/* Direct Navbar Logout Button */}
+            {onLogout && (
+              <button
+                type="button"
+                id="btn-navbar-logout"
+                onClick={onLogout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shadow-2xs transition-colors cursor-pointer"
+                title="Keluar dari akun Anda dan kembali ke beranda"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -387,15 +450,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             Papan
           </button>
           {currentUser.userType === 'admin' && (
-            <button
-              onClick={() => setActiveTab('admin_monitor')}
-              className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded-lg ${
-                activeTab === 'admin_monitor' ? 'text-amber-600 font-bold' : 'text-amber-700'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4 text-amber-500" />
-              Monitor
-            </button>
+            <>
+              <button
+                onClick={() => setActiveTab('admin_monitor')}
+                className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded-lg ${
+                  activeTab === 'admin_monitor' ? 'text-amber-600 font-bold' : 'text-amber-700'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-500" />
+                Monitor
+              </button>
+              <button
+                onClick={() => setActiveTab('admin_database')}
+                className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded-lg ${
+                  activeTab === 'admin_database' ? 'text-emerald-600 font-bold' : 'text-emerald-700'
+                }`}
+              >
+                <Database className="w-4 h-4 text-emerald-500" />
+                Database
+              </button>
+            </>
           )}
           <button
             onClick={() => setActiveTab('calendar')}
@@ -413,8 +487,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Award className="w-4 h-4" />
-            Member Aktif
+            Member
           </button>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded-lg text-rose-600"
+            >
+              <LogOut className="w-4 h-4" />
+              Keluar
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('analytics')}
             className={`flex flex-col items-center gap-1 text-[11px] font-medium py-1 px-2 rounded-lg ${

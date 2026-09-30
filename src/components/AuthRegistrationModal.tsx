@@ -26,12 +26,13 @@ import {
   KeyRound,
 } from 'lucide-react';
 import { Logo } from './Logo';
-import { MemberSocialAccounts, TeamMember, SocialFollowProof } from '../types';
+import { MemberSocialAccounts, TeamMember, SocialFollowProof, NotificationItem } from '../types';
 import {
   saveRegisteredMemberLocally,
   getStoredRegisteredMembers,
   generateActivationCode,
 } from '../lib/memberStorage';
+import { syncManager } from '../lib/syncManager';
 
 interface AuthRegistrationModalProps {
   isOpen: boolean;
@@ -52,7 +53,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   existingMembers,
   officialSocials,
   onOpenEmailActivation,
-  requireEmailActivation = false,
+  requireEmailActivation = true,
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'admin_login'>(initialMode);
   const [regStep, setRegStep] = useState<1 | 2>(1);
@@ -68,6 +69,10 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
 
   // Social accounts of the registering member
   const [socials, setSocials] = useState<MemberSocialAccounts>({});
+
+  // Step 2: Strict Orientation Mission Proof Inputs
+  const [ytProofHandle, setYtProofHandle] = useState('');
+  const [igProofHandle, setIgProofHandle] = useState('');
 
   // Step 2: Orientation Mission Gating (YouTube Watch 2 Mins, Follow IG, Join WA)
   const REQUIRED_WATCH_SECONDS = 120;
@@ -90,6 +95,9 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+
+  // Unverified member seeking login
+  const [unverifiedLoginMember, setUnverifiedLoginMember] = useState<TeamMember | null>(null);
 
   // Admin login specific state
   const [adminIdentifier, setAdminIdentifier] = useState('');
@@ -140,7 +148,19 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   };
 
   const watchPercentage = Math.min(100, Math.round((secondsWatched / REQUIRED_WATCH_SECONDS) * 100));
-  const isYoutubeRequirementMet = secondsWatched >= REQUIRED_WATCH_SECONDS || youtubeConfirmed;
+  
+  // Stricter verification rules: must visit link AND confirm with account handle proof
+  const isYoutubeValid =
+    hasOpenedYoutube &&
+    (secondsWatched >= REQUIRED_WATCH_SECONDS || ytProofHandle.trim().length >= 3) &&
+    youtubeConfirmed;
+
+  const isInstagramValid =
+    hasOpenedInstagram && igProofHandle.trim().length >= 3 && instagramConfirmed;
+
+  const isWhatsappValid = hasOpenedWhatsapp && whatsappConfirmed;
+
+  const isYoutubeRequirementMet = isYoutubeValid;
 
   // Construct official URLs
   const rawYt = officialSocials?.youtube || '@adrian_andrew.id';
@@ -155,8 +175,8 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   const rawTt = officialSocials?.tiktok || '';
   const ttUrl = rawTt.startsWith('http') ? rawTt : rawTt ? `https://tiktok.com/@${rawTt.replace('@', '')}` : '';
 
-  // Gatekeeping requirement: must have watched YouTube (>= 2 mins) + Instagram follow + WhatsApp join
-  const canFinalizeRegistration = isYoutubeRequirementMet && instagramConfirmed && whatsappConfirmed;
+  // Gatekeeping requirement: must have opened & verified YouTube + Instagram + WhatsApp
+  const canFinalizeRegistration = isYoutubeValid && isInstagramValid && isWhatsappValid;
 
   // Validate Step 1 and proceed to Step 2
   const handleProceedToStep2 = (e: React.FormEvent) => {
@@ -200,6 +220,10 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       return;
     }
 
+    // Pre-fill proofs from step 1
+    if (socials.youtube && !ytProofHandle) setYtProofHandle(socials.youtube);
+    if (socials.instagram && !igProofHandle) setIgProofHandle(socials.instagram);
+
     // Move to Step 2 (Mandatory Follow / Subscribe / WhatsApp)
     setRegStep(2);
   };
@@ -221,12 +245,14 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     const followProof: SocialFollowProof = {
       youtubeWatchedSeconds: secondsWatched,
       youtubeSubscribed: true,
+      youtubeHandleProof: ytProofHandle.trim(),
       youtubeWatchProof:
         secondsWatched >= 120
           ? `Tuntas ${Math.floor(secondsWatched / 60)}m ${secondsWatched % 60}s (> 2 Menit, Valid Algoritma)`
-          : 'Tuntas Terverifikasi Orientasi',
+          : `Terverifikasi Akun YouTube: ${ytProofHandle.trim()}`,
       youtubeVerifiedAt: new Date().toISOString(),
       instagramFollowed: true,
+      instagramHandleProof: igProofHandle.trim(),
       whatsappJoined: true,
       tiktokFollowed: tiktokConfirmed,
       allCompleted: true,
@@ -246,17 +272,21 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       gender: jenisKelamin,
       phoneNumber: nomorHp.trim(),
       occupation: pekerjaan.trim(),
-      socialAccounts: socials,
+      socialAccounts: {
+        ...socials,
+        youtube: ytProofHandle.trim() || socials.youtube,
+        instagram: igProofHandle.trim() || socials.instagram,
+      },
       socialFollowProof: followProof,
       creatorNiche: 'Multiplatform Sinergi',
       primaryPlatform: socials.instagram ? 'Instagram' : socials.tiktok ? 'TikTok' : 'YouTube',
       monetizationStatus: 'in_progress',
-      xp: 500, // 350 base + 150 orientation bonus
+      xp: 0, // Points/XP rewards removed
       level: 1,
       levelTitle: 'Anggota Baru TBK Terverifikasi Penuh',
       streak: 1,
       referralCode: `TBK-${nama.split(' ')[0].toUpperCase()}-${Math.floor(10 + Math.random() * 89)}`,
-      referralPoints: 100,
+      referralPoints: 0,
       referralsCount: 0,
       buddySynergyScore: 90,
       completedTasksCount: 1,
@@ -271,7 +301,23 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
     // 1. Save member to persistent localStorage IMMEDIATELY so it is NEVER lost
     saveRegisteredMemberLocally(newMember);
 
-    // 2. Sync to backend API if available
+    // 2. Cache immediately in syncManager so Admin receives notification and sees member
+    const existingTeam = syncManager.getCachedTeam() || existingMembers || [];
+    syncManager.setCachedTeam([newMember, ...existingTeam.filter((m) => m.id !== newMember.id)]);
+
+    const registerNotif: NotificationItem = {
+      id: `notif-join-${newMember.id}-${Date.now()}`,
+      title: `👤 Member Baru Bergabung: ${newMember.name}`,
+      message: `${newMember.name} (${newMember.role || newMember.occupation || 'Member Baru'}) telah bergabung di Komunitas TBK. Klik untuk melihat resume member di Kalender Editorial!`,
+      type: 'member_joined',
+      read: false,
+      createdAt: newMember.joinedAt || new Date().toISOString(),
+      memberId: newMember.id,
+    };
+    const cachedNotifs = syncManager.getCachedNotifs() || [];
+    syncManager.setCachedNotifs([registerNotif, ...cachedNotifs.filter((n) => n.id !== registerNotif.id)]);
+
+    // 3. Sync to backend API if available
     try {
       await fetch('/api/team', {
         method: 'POST',
@@ -562,9 +608,26 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
 
         {/* Error banner if any */}
         {errorMessage && (
-          <div className="px-6 py-3 bg-red-50 border-b border-red-200 text-xs font-bold text-red-700 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-            <span>{errorMessage}</span>
+          <div className="px-6 py-3 bg-amber-50 border-b border-amber-200 text-xs text-amber-900 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-800">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+            {unverifiedLoginMember && onOpenEmailActivation && (
+              <button
+                type="button"
+                onClick={() => {
+                  const mem = unverifiedLoginMember;
+                  setUnverifiedLoginMember(null);
+                  onClose();
+                  onOpenEmailActivation(mem);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs transition-colors cursor-pointer"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Buka Form Aktivasi Akun Sekarang (Masukkan Kode PIN) →</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -1032,23 +1095,47 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                         </a>
                       </div>
 
-                      {/* Checkbox confirmation */}
-                      <label className="flex items-center gap-2 pt-2 border-t border-slate-100 cursor-pointer">
+                      {/* Input User's YouTube Channel/Handle Proof */}
+                      <div className="pt-2 border-t border-slate-100 space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                          <span>Nama / Akun YouTube Anda (Wajib Bukti Subscribe):</span>
+                          {ytProofHandle.trim().length >= 3 && <span className="text-emerald-600 font-bold">✓ Terisi</span>}
+                        </label>
                         <input
-                          type="checkbox"
-                          checked={youtubeConfirmed}
-                          onChange={(e) => {
-                            setYoutubeConfirmed(e.target.checked);
-                            if (e.target.checked && secondsWatched < REQUIRED_WATCH_SECONDS) {
-                              setSecondsWatched(REQUIRED_WATCH_SECONDS);
-                            }
-                          }}
-                          className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300"
+                          type="text"
+                          required
+                          value={ytProofHandle}
+                          onChange={(e) => setYtProofHandle(e.target.value)}
+                          placeholder="Contoh: @channelSaya atau Nama Akun YouTube Anda"
+                          className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-white"
                         />
-                        <span className="text-xs text-slate-700 font-medium">
-                          Saya sudah menonton video minimal 2 menit dan telah menekan Subscribe di YouTube Admin.
-                        </span>
-                      </label>
+                        <p className="text-[10px] text-slate-500">
+                          Digunakan untuk mencocokkan riwayat subscription di sistem Admin TBK.
+                        </p>
+                      </div>
+
+                      {/* Checkbox confirmation (Stricter: disabled until opened and handled) */}
+                      <div className="pt-2 border-t border-slate-100">
+                        {!hasOpenedYoutube ? (
+                          <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-800 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                            <span>Silakan klik tombol merah <strong>"Buka Video di YouTube"</strong> di atas terlebih dahulu.</span>
+                          </div>
+                        ) : (
+                          <label className="flex items-start gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={youtubeConfirmed}
+                              disabled={!hasOpenedYoutube || ytProofHandle.trim().length < 3}
+                              onChange={(e) => setYoutubeConfirmed(e.target.checked)}
+                              className="w-4 h-4 mt-0.5 rounded text-red-600 focus:ring-red-500 border-slate-300 disabled:opacity-40"
+                            />
+                            <span className="text-xs text-slate-700 font-medium">
+                              Saya telah menonton video YouTube Admin minimal 2 menit dan menekan tombol Subscribe dengan akun <strong>{ytProofHandle || '(isi akun YouTube Anda di atas)'}</strong>.
+                            </span>
+                          </label>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1064,7 +1151,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                             2. Follow Akun Instagram Official Admin
                           </h4>
                           <p className="text-[11px] text-slate-500">
-                            Akun: <strong className="text-slate-800">{rawIg}</strong>
+                            Akun Resmi Admin: <strong className="text-slate-800">{rawIg}</strong>
                           </p>
                         </div>
                       </div>
@@ -1075,7 +1162,6 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                         rel="noreferrer"
                         onClick={() => {
                           setHasOpenedInstagram(true);
-                          setInstagramConfirmed(true);
                         }}
                         className="px-3.5 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all"
                       >
@@ -1084,17 +1170,41 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                       </a>
                     </div>
 
-                    <label className="flex items-center gap-2 pt-1 cursor-pointer">
+                    {/* Input User's Instagram Handle Proof */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                        <span>Username Instagram Anda (Wajib Bukti Follow):</span>
+                        {igProofHandle.trim().length >= 3 && <span className="text-emerald-600 font-bold">✓ Terisi</span>}
+                      </label>
                       <input
-                        type="checkbox"
-                        checked={instagramConfirmed}
-                        onChange={(e) => setInstagramConfirmed(e.target.checked)}
-                        className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 border-slate-300"
+                        type="text"
+                        required
+                        value={igProofHandle}
+                        onChange={(e) => setIgProofHandle(e.target.value)}
+                        placeholder="Contoh: @username_ig_anda"
+                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 bg-white"
                       />
-                      <span className="text-xs text-slate-700 font-medium">
-                        Saya sudah mem-follow akun Instagram resmi Admin (<strong>{rawIg}</strong>).
-                      </span>
-                    </label>
+                    </div>
+
+                    {!hasOpenedInstagram ? (
+                      <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-800 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                        <span>Silakan klik tombol pink <strong>"Buka &amp; Follow IG"</strong> di atas terlebih dahulu.</span>
+                      </div>
+                    ) : (
+                      <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={instagramConfirmed}
+                          disabled={!hasOpenedInstagram || igProofHandle.trim().length < 3}
+                          onChange={(e) => setInstagramConfirmed(e.target.checked)}
+                          className="w-4 h-4 mt-0.5 rounded text-pink-600 focus:ring-pink-500 border-slate-300 disabled:opacity-40"
+                        />
+                        <span className="text-xs text-slate-700 font-medium">
+                          Saya sudah mem-follow akun Instagram resmi Admin (<strong>{rawIg}</strong>) menggunakan akun <strong>{igProofHandle || '(isi username IG)'}</strong>.
+                        </span>
+                      </label>
+                    )}
                   </div>
 
                   {/* 3. Join WhatsApp Group (User Request 4) */}
@@ -1120,7 +1230,6 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                         rel="noreferrer"
                         onClick={() => {
                           setHasOpenedWhatsapp(true);
-                          setWhatsappConfirmed(true);
                         }}
                         className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all"
                       >
@@ -1129,17 +1238,25 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                       </a>
                     </div>
 
-                    <label className="flex items-center gap-2 pt-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={whatsappConfirmed}
-                        onChange={(e) => setWhatsappConfirmed(e.target.checked)}
-                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
-                      />
-                      <span className="text-xs text-slate-700 font-medium">
-                        Saya sudah menekan tombol di atas dan bergabung ke Grup WhatsApp resmi Komunitas TBK.
-                      </span>
-                    </label>
+                    {!hasOpenedWhatsapp ? (
+                      <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-800 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                        <span>Silakan klik tombol hijau <strong>"Gabung WhatsApp"</strong> di atas terlebih dahulu.</span>
+                      </div>
+                    ) : (
+                      <label className="flex items-center gap-2 pt-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={whatsappConfirmed}
+                          disabled={!hasOpenedWhatsapp}
+                          onChange={(e) => setWhatsappConfirmed(e.target.checked)}
+                          className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 disabled:opacity-40"
+                        />
+                        <span className="text-xs text-slate-700 font-medium">
+                          Saya sudah bergabung ke Grup WhatsApp resmi Komunitas TBK dengan nomor <strong>{nomorHp}</strong>.
+                        </span>
+                      </label>
+                    )}
                   </div>
 
                   {/* Optional Step 4: TikTok if configured */}

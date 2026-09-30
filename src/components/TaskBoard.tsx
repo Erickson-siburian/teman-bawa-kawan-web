@@ -410,7 +410,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                               </div>
                             </div>
 
-                            {/* Buddy Quick Action or Bonus XP Badge */}
+                            {/* Buddy Quick Action or Collaboration Badge */}
                             {!task.buddyId && task.status !== 'done' ? (
                               <button
                                 onClick={(e) => {
@@ -422,16 +422,16 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                                   }
                                 }}
                                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 text-[10px] font-bold border border-amber-200 transition-colors"
-                                title="Bawa Kawan ke tugas ini untuk mendapatkan bonus sinergi +40 XP!"
+                                title="Bawa Kawan ke tugas ini untuk saling gotong royong dan kolaborasi"
                               >
                                 <UserPlus className="w-3 h-3 text-amber-600" />
                                 Bawa Kawan
                               </button>
                             ) : (
                               <div className="text-right">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md">
-                                  <Sparkles className="w-3 h-3" />
-                                  +120 XP
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                                  <Sparkles className="w-3 h-3 text-amber-500" />
+                                  Sinergi Duo
                                 </span>
                               </div>
                             )}

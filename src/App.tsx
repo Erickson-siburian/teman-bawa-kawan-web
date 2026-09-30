@@ -19,6 +19,7 @@ import { AdminFirebaseOnlineManagerModal } from './components/AdminFirebaseOnlin
 import { AdminAccessGateModal } from './components/AdminAccessGateModal';
 import { AnnouncementTicker } from './components/AnnouncementTicker';
 import { EmailActivationModal } from './components/EmailActivationModal';
+import { AdminDatabaseSyncView } from './components/AdminDatabaseSyncView';
 import { getStoredRegisteredMembers, saveRegisteredMemberLocally } from './lib/memberStorage';
 import {
   NotificationItem,
@@ -37,7 +38,7 @@ import { getStoredWebsiteConfig, subscribeToWebsiteConfigOnline } from './servic
 import confetti from 'canvas-confetti';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'board' | 'calendar' | 'gamification' | 'analytics' | 'admin_monitor' | 'admin_database'>('landing');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(initialTeamMembers);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -126,6 +127,24 @@ export default function App() {
     initialNotifications.forEach((initN) => {
       if (!baseNotifs.some((n) => n.id === initN.id)) {
         baseNotifs.unshift(initN);
+      }
+    });
+
+    // CRITICAL: Ensure every registered member has a member_joined notification for the Admin
+    storedRegistered.forEach((regMem) => {
+      const alreadyHas = baseNotifs.some(
+        (n) => n.memberId === regMem.id || n.id.includes(regMem.id) || n.message.includes(regMem.name)
+      );
+      if (!alreadyHas) {
+        baseNotifs.unshift({
+          id: `notif-join-${regMem.id}`,
+          title: `👤 Member Baru Bergabung: ${regMem.name}`,
+          message: `${regMem.name} (${regMem.role || regMem.occupation || 'Member Baru'}) telah bergabung di Komunitas TBK. Klik untuk melihat resume member di Kalender Editorial!`,
+          type: 'member_joined',
+          read: false,
+          createdAt: regMem.joinedAt || new Date().toISOString(),
+          memberId: regMem.id,
+        });
       }
     });
     const activeNotifs = baseNotifs;
@@ -379,12 +398,7 @@ export default function App() {
     const dueTimestamp = new Date(targetTask.dueDate).getTime();
     const isOnTime = Date.now() <= dueTimestamp;
 
-    let xpGained = 0;
     if (isNewlyCompleted) {
-      xpGained = 50;
-      if (isOnTime) xpGained += 30;
-      if (targetTask.buddyId) xpGained += 40;
-
       playTaskDoneChime();
       confetti({
         particleCount: 70,
@@ -398,7 +412,6 @@ export default function App() {
       status: newStatus,
       completedAt: isNewlyCompleted ? new Date().toISOString() : targetTask.completedAt,
       onTime: isNewlyCompleted ? isOnTime : targetTask.onTime,
-      xpAwarded: isNewlyCompleted ? xpGained : targetTask.xpAwarded,
       updatedAt: new Date().toISOString(),
     };
 
@@ -410,14 +423,12 @@ export default function App() {
     });
     setSelectedTask((prev) => (prev?.id === taskId ? updatedTask : prev));
 
-    // Update currentUser XP if this is current user
+    // Update currentUser task count if this is current user
     if (isNewlyCompleted && targetTask.assigneeId === currentUser.id) {
       setCurrentUser((prev) => ({
         ...prev,
-        xp: prev.xp + xpGained,
-        completedTasksCount: prev.completedTasksCount + 1,
-        streak: isOnTime ? prev.streak + 1 : prev.streak,
-        level: Math.max(1, Math.floor((prev.xp + xpGained) / 350) + 1),
+        completedTasksCount: (prev.completedTasksCount || 0) + 1,
+        streak: isOnTime ? (prev.streak || 0) + 1 : prev.streak,
       }));
     }
 
@@ -976,7 +987,11 @@ export default function App() {
       memberId: member.id,
     };
 
-    setNotifications((prev) => [joinNotif, notif, ...prev]);
+    setNotifications((prev) => {
+      const next = [joinNotif, notif, ...prev.filter((n) => n.id !== joinNotif.id)];
+      syncManager.setCachedNotifs(next);
+      return next;
+    });
 
     // Navigate to board
     setActiveTab('board');
@@ -1217,6 +1232,11 @@ export default function App() {
           setIsBroadcastTaskModalOpen(true);
         }}
         onOpenAdminSocialsModal={() => setIsAdminSocialsModalOpen(true)}
+        onOpenAdminFirebaseModal={() => setIsAdminFirebaseModalOpen(true)}
+        onLogout={() => {
+          setIsLoggedIn(false);
+          setActiveTab('landing');
+        }}
       />
 
       {/* Main Content Area */}
@@ -1288,6 +1308,24 @@ export default function App() {
             onDeleteTask={handleDeleteTask}
             onEditMember={handleOpenEditMember}
             onDeleteMember={handleOpenDeleteMember}
+          />
+        )}
+
+        {activeTab === 'admin_database' && (
+          <AdminDatabaseSyncView
+            currentUser={currentUser}
+            teamMembers={teamMembers}
+            tasks={tasks}
+            websiteConfig={websiteConfig}
+            onUpdateTeamMembers={(newMembers) => {
+              setTeamMembers(newMembers);
+              syncManager.setCachedTeam(newMembers);
+            }}
+            onUpdateTasks={(newTasks) => {
+              setTasks(newTasks);
+              syncManager.setCachedTasks(newTasks);
+            }}
+            onOpenFirebaseConfigModal={() => setIsAdminFirebaseModalOpen(true)}
           />
         )}
       </main>

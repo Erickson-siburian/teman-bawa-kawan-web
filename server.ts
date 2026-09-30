@@ -864,65 +864,34 @@ async function startServer() {
       const currentTimestamp = Date.now();
       isOnTime = currentTimestamp <= dueTimestamp;
 
-      // Base XP
-      xpGained = 50;
-      if (isOnTime) xpGained += 30; // On time bonus
-      if (previousTask.buddyId) xpGained += 40; // TBK Buddy Synergy bonus!
-
       updates.completedAt = new Date().toISOString();
       updates.onTime = isOnTime;
-      updates.xpAwarded = xpGained;
 
-      // Update Member Gamification Stats
+      // Update Member Collaboration Stats (without XP / Points)
       const assignee = teamMembers.find((m) => m.id === previousTask.assigneeId);
       if (assignee) {
-        assignee.xp += xpGained;
-        assignee.completedTasksCount += 1;
-        if (isOnTime) assignee.streak += 1;
-        // Level recalculation (every 350 XP)
-        assignee.level = Math.max(1, Math.floor(assignee.xp / 350) + 1);
+        assignee.completedTasksCount = (assignee.completedTasksCount || 0) + 1;
+        if (isOnTime) assignee.streak = (assignee.streak || 0) + 1;
       }
 
-      // If there's a buddy, buddy gets bonus XP & synergy boost
+      // If there's a buddy, update buddy synergy
       if (previousTask.buddyId) {
         const buddy = teamMembers.find((m) => m.id === previousTask.buddyId);
         if (buddy) {
-          buddy.xp += Math.round(xpGained * 0.8);
-          buddy.buddySynergyScore = Math.min(100, buddy.buddySynergyScore + 2);
-          if (isOnTime) buddy.streak += 1;
+          buddy.buddySynergyScore = Math.min(100, (buddy.buddySynergyScore || 80) + 2);
+          if (isOnTime) buddy.streak = (buddy.streak || 0) + 1;
         }
 
-        // Referral Reward generation if on-time
-        if (isOnTime) {
-          const newRef: ReferralRecord = {
-            id: `ref-${Date.now()}`,
-            code: previousTask.referralCodeUsed || 'TBK-TEAM',
-            inviterName: previousTask.assigneeName,
-            refereeName: previousTask.buddyName || 'Kawan Tim',
-            taskId: previousTask.id,
-            taskTitle: previousTask.title,
-            bonusXp: 80,
-            bonusPoints: 50,
-            completedAt: new Date().toISOString(),
-          };
-          referrals.unshift(newRef);
-
-          if (assignee) {
-            assignee.referralPoints += 50;
-            assignee.referralsCount += 1;
-          }
-
-          const refNotif: NotificationItem = {
-            id: `notif-${Date.now()}`,
-            title: '🎁 Hadiah Sinergi Kawan Tepat Waktu!',
-            message: `Tugas "${previousTask.title}" tuntas tepat waktu! +${xpGained} XP & 50 Poin Referal ditambahkan.`,
-            type: 'referral_reward',
-            read: false,
-            createdAt: new Date().toISOString(),
-          };
-          notifications.unshift(refNotif);
-          broadcastEvent('notification_added', refNotif);
-        }
+        const compNotif: NotificationItem = {
+          id: `notif-${Date.now()}`,
+          title: '🎉 Tugas Kolaborasi Tuntas!',
+          message: `Tugas "${previousTask.title}" tuntas dikerjakan bersama Kawan ${previousTask.buddyName || ''}! Sinergi saling support berhasil ditingkatkan.`,
+          type: 'task_done',
+          read: false,
+          createdAt: new Date().toISOString(),
+        };
+        notifications.unshift(compNotif);
+        broadcastEvent('notification_added', compNotif);
       }
     }
 
@@ -1340,7 +1309,6 @@ async function startServer() {
 
     if (isFullyDone) {
       member.completedTasksCount = (member.completedTasksCount || 0) + 1;
-      member.xp = (member.xp || 350) + 150;
     }
 
     saveDatabase();
