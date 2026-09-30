@@ -34,7 +34,7 @@ import {
 import { syncManager } from './lib/syncManager';
 import { playTaskDoneChime, playLevelUpFanfare, playNotificationTone } from './lib/audio';
 import { initialTeamMembers, initialTasks, initialNotifications, initialReferrals } from './data/initialData';
-import { getStoredWebsiteConfig, subscribeToWebsiteConfigOnline } from './services/firebaseService';
+import { getStoredWebsiteConfig, saveStoredWebsiteConfig, subscribeToWebsiteConfigOnline } from './services/firebaseService';
 import confetti from 'canvas-confetti';
 
 export default function App() {
@@ -165,12 +165,13 @@ export default function App() {
     // If online, attempt to fetch fresh data from server
     if (syncManager.isOnline()) {
       try {
-        const [tasksRes, teamRes, notifRes, refRes, officialRes] = await Promise.all([
+        const [tasksRes, teamRes, notifRes, refRes, officialRes, configRes] = await Promise.all([
           fetch('/api/tasks').then((r) => r.json()).catch(() => null),
           fetch('/api/team').then((r) => r.json()).catch(() => null),
           fetch('/api/notifications').then((r) => r.json()).catch(() => null),
           fetch('/api/referrals').then((r) => r.json()).catch(() => null),
           fetch('/api/admin/official-socials').then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/website-config').then((r) => r.json()).catch(() => null),
         ]);
 
         if (tasksRes && tasksRes.success) {
@@ -187,11 +188,35 @@ export default function App() {
           if (matchedUser) setCurrentUser(matchedUser);
         }
         if (notifRes && notifRes.success) {
-          setNotifications(notifRes.notifications);
-          syncManager.setCachedNotifs(notifRes.notifications);
+          const mergedNotifs = [...notifRes.notifications];
+          storedRegistered.forEach((regMem) => {
+            const alreadyHas = mergedNotifs.some(
+              (n) => n.memberId === regMem.id || n.id.includes(regMem.id) || n.message.includes(regMem.name)
+            );
+            if (!alreadyHas) {
+              mergedNotifs.unshift({
+                id: `notif-join-${regMem.id}`,
+                title: `👤 Member Baru Bergabung: ${regMem.name}`,
+                message: `${regMem.name} (${regMem.role || regMem.occupation || 'Member Baru'}) telah bergabung di Komunitas TBK. Klik untuk melihat resume member di Kalender Editorial!`,
+                type: 'member_joined',
+                read: false,
+                createdAt: regMem.joinedAt || new Date().toISOString(),
+                memberId: regMem.id,
+              });
+            }
+          });
+          setNotifications(mergedNotifs);
+          syncManager.setCachedNotifs(mergedNotifs);
         }
         if (refRes && refRes.success) {
           setReferrals(refRes.referrals);
+        }
+        if (configRes && configRes.success && configRes.config) {
+          setWebsiteConfig(configRes.config);
+          saveStoredWebsiteConfig(configRes.config);
+          if (configRes.config.officialSocials) {
+            setOfficialAdminSocials(configRes.config.officialSocials);
+          }
         }
         if (officialRes && officialRes.success && officialRes.socialAccounts) {
           setOfficialAdminSocials(officialRes.socialAccounts);
@@ -256,6 +281,14 @@ export default function App() {
           syncManager.setCachedTeam(data.teamMembers);
         }
         setOutboxCount(syncManager.getOutboxCount());
+      } else if (type === 'official_socials_updated') {
+        setOfficialAdminSocials(data);
+      } else if (type === 'website_config_updated') {
+        setWebsiteConfig(data);
+        saveStoredWebsiteConfig(data);
+        if (data.officialSocials) {
+          setOfficialAdminSocials(data.officialSocials);
+        }
       }
     });
 

@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Youtube,
   Instagram,
+  Facebook,
   Clock,
   Play,
   Pause,
@@ -33,6 +34,7 @@ import {
   generateActivationCode,
 } from '../lib/memberStorage';
 import { syncManager } from '../lib/syncManager';
+import { getStoredWebsiteConfig } from '../services/firebaseService';
 
 interface AuthRegistrationModalProps {
   isOpen: boolean;
@@ -74,7 +76,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   const [ytProofHandle, setYtProofHandle] = useState('');
   const [igProofHandle, setIgProofHandle] = useState('');
 
-  // Step 2: Orientation Mission Gating (YouTube Watch 2 Mins, Follow IG, Join WA)
+  // Step 2: Orientation Mission Gating (YouTube Watch 2 Mins, Follow IG, Join WA, Fanspage FB)
   const REQUIRED_WATCH_SECONDS = 120;
   const [secondsWatched, setSecondsWatched] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -82,12 +84,22 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   const [hasOpenedInstagram, setHasOpenedInstagram] = useState(false);
   const [hasOpenedWhatsapp, setHasOpenedWhatsapp] = useState(false);
   const [hasOpenedTiktok, setHasOpenedTiktok] = useState(false);
+  const [hasOpenedFacebook, setHasOpenedFacebook] = useState(false);
 
   // Mandatory confirmation checkboxes
   const [youtubeConfirmed, setYoutubeConfirmed] = useState(false);
   const [instagramConfirmed, setInstagramConfirmed] = useState(false);
   const [whatsappConfirmed, setWhatsappConfirmed] = useState(false);
   const [tiktokConfirmed, setTiktokConfirmed] = useState(false);
+  const [facebookConfirmed, setFacebookConfirmed] = useState(false);
+  const [fbProofHandle, setFbProofHandle] = useState('');
+
+  // Live dynamic official socials with fallback to stored config and server fetch
+  const [liveSocials, setLiveSocials] = useState<MemberSocialAccounts>(() => {
+    return officialSocials && Object.keys(officialSocials).length > 0
+      ? officialSocials
+      : getStoredWebsiteConfig().officialSocials || {};
+  });
 
   // Login-specific state
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -108,15 +120,30 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [regSuccess, setRegSuccess] = useState(false);
 
-  // Reset step when modal opens
+  // Reset step and ensure latest social accounts loaded when modal opens
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
       setRegStep(1);
       setErrorMessage('');
       setRegSuccess(false);
+
+      if (officialSocials && Object.keys(officialSocials).length > 0) {
+        setLiveSocials(officialSocials);
+      } else {
+        const stored = getStoredWebsiteConfig().officialSocials;
+        if (stored) setLiveSocials(stored);
+        fetch('/api/admin/official-socials')
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.success && data.socialAccounts) {
+              setLiveSocials(data.socialAccounts);
+            }
+          })
+          .catch(() => {});
+      }
     }
-  }, [isOpen, initialMode]);
+  }, [isOpen, initialMode, officialSocials]);
 
   // YouTube watch timer interval
   useEffect(() => {
@@ -160,23 +187,28 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
 
   const isWhatsappValid = hasOpenedWhatsapp && whatsappConfirmed;
 
-  const isYoutubeRequirementMet = isYoutubeValid;
-
-  // Construct official URLs
-  const rawYt = officialSocials?.youtube || '@adrian_andrew.id';
+  // Construct official URLs using liveSocials
+  const rawYt = liveSocials?.youtube || '@adrian_andrew.id';
   const ytUrl = rawYt.startsWith('http') ? rawYt : `https://youtube.com/@${rawYt.replace('@', '')}`;
 
-  const rawIg = officialSocials?.instagram || '@adrian_andrew.id';
+  const rawIg = liveSocials?.instagram || '@adrian_andrew.id';
   const igUrl = rawIg.startsWith('http') ? rawIg : `https://instagram.com/${rawIg.replace('@', '')}`;
 
-  const rawWa = officialSocials?.whatsappGroup || 'https://chat.whatsapp.com/TBKOfficialCommunity';
+  const rawWa = liveSocials?.whatsappGroup || 'https://chat.whatsapp.com/TBKOfficialCommunity';
   const waUrl = rawWa.startsWith('http') ? rawWa : `https://chat.whatsapp.com/${rawWa}`;
 
-  const rawTt = officialSocials?.tiktok || '';
+  const rawFb = liveSocials?.facebook || '';
+  const fbUrl = rawFb.startsWith('http') ? rawFb : rawFb ? `https://facebook.com/${rawFb.replace('@', '')}` : '';
+
+  const rawTt = liveSocials?.tiktok || '';
   const ttUrl = rawTt.startsWith('http') ? rawTt : rawTt ? `https://tiktok.com/@${rawTt.replace('@', '')}` : '';
 
-  // Gatekeeping requirement: must have opened & verified YouTube + Instagram + WhatsApp
-  const canFinalizeRegistration = isYoutubeValid && isInstagramValid && isWhatsappValid;
+  const isFacebookValid = !rawFb || (hasOpenedFacebook && facebookConfirmed && fbProofHandle.trim().length >= 2);
+
+  const isYoutubeRequirementMet = isYoutubeValid;
+
+  // Gatekeeping requirement: must have opened & verified YouTube + Instagram + WhatsApp (+ Facebook Fanspage if configured)
+  const canFinalizeRegistration = isYoutubeValid && isInstagramValid && isWhatsappValid && isFacebookValid;
 
   // Validate Step 1 and proceed to Step 2
   const handleProceedToStep2 = (e: React.FormEvent) => {
@@ -235,7 +267,8 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
 
     if (!canFinalizeRegistration) {
       setErrorMessage(
-        'Anda TIDAK DAPAT mendaftar ke website sebelum menyelesaikan 3 Misi Wajib: Menonton YouTube minimal 2 menit & subscribe, follow Instagram Admin, dan bergabung ke Grup WhatsApp!'
+        'Anda TIDAK DAPAT mendaftar ke website sebelum menyelesaikan seluruh Misi Wajib: Menonton YouTube minimal 2 menit & subscribe, follow Instagram Admin, bergabung ke Grup WhatsApp' +
+          (rawFb ? ', dan follow Fanspage Facebook Admin!' : '!')
       );
       return;
     }
@@ -254,6 +287,8 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       instagramFollowed: true,
       instagramHandleProof: igProofHandle.trim(),
       whatsappJoined: true,
+      facebookFollowed: !!facebookConfirmed,
+      facebookHandleProof: fbProofHandle.trim() || undefined,
       tiktokFollowed: tiktokConfirmed,
       allCompleted: true,
       completedAt: new Date().toISOString(),
@@ -335,7 +370,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
           youtubeConfirmed: true,
           instagramConfirmed: true,
           tiktokConfirmed,
-          facebookConfirmed: false,
+          facebookConfirmed: !!facebookConfirmed,
           whatsappConfirmed: true,
         }),
       });
@@ -1259,7 +1294,75 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                     )}
                   </div>
 
-                  {/* Optional Step 4: TikTok if configured */}
+                  {/* 4. Follow Fanspage Facebook Official Admin (if configured) */}
+                  {rawFb && (
+                    <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3 bg-slate-50/60">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                            <Facebook className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs sm:text-sm font-black text-slate-900">
+                              4. Follow Fanspage Facebook Official Admin
+                            </h4>
+                            <p className="text-[11px] text-slate-500">
+                              Fanspage Resmi Admin: <strong className="text-slate-800">{rawFb}</strong>
+                            </p>
+                          </div>
+                        </div>
+
+                        <a
+                          href={fbUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => {
+                            setHasOpenedFacebook(true);
+                          }}
+                          className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all"
+                        >
+                          <span>Buka Fanspage FB</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                          <span>Nama / Akun Facebook Anda (Wajib Bukti Follow):</span>
+                          {fbProofHandle.trim().length >= 2 && <span className="text-emerald-600 font-bold">✓ Terisi</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={fbProofHandle}
+                          onChange={(e) => setFbProofHandle(e.target.value)}
+                          placeholder="Contoh: Nama Akun Facebook Anda"
+                          className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                        />
+                      </div>
+
+                      {!hasOpenedFacebook ? (
+                        <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-800 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                          <span>Silakan klik tombol biru <strong>"Buka Fanspage FB"</strong> di atas terlebih dahulu.</span>
+                        </div>
+                      ) : (
+                        <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={facebookConfirmed}
+                            disabled={!hasOpenedFacebook || fbProofHandle.trim().length < 2}
+                            onChange={(e) => setFacebookConfirmed(e.target.checked)}
+                            className="w-4 h-4 mt-0.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 disabled:opacity-40"
+                          />
+                          <span className="text-xs text-slate-700 font-medium">
+                            Saya sudah mem-follow Fanspage Facebook resmi Admin (<strong>{rawFb}</strong>) menggunakan akun <strong>{fbProofHandle || '(isi akun Facebook Anda)'}</strong>.
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Optional Step: TikTok if configured */}
                   {ttUrl && (
                     <div className="border border-slate-200 rounded-2xl p-4 space-y-2.5 bg-slate-50/60">
                       <div className="flex items-center justify-between gap-3">
@@ -1306,11 +1409,11 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                             : 'bg-amber-200 text-amber-900'
                         }`}
                       >
-                        {canFinalizeRegistration ? '🔓 Akses Terbuka' : '🔒 Terkunci (Selesaikan 3 Syarat)'}
+                        {canFinalizeRegistration ? '🔓 Akses Terbuka' : '🔒 Terkunci (Selesaikan Seluruh Syarat)'}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-medium">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-[11px] font-medium">
                       <div className="flex items-center gap-1.5">
                         {isYoutubeRequirementMet ? (
                           <span className="text-emerald-700 font-bold">✅ 1. YouTube (Min 2 Mnt)</span>
@@ -1332,6 +1435,15 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
                           <span className="text-amber-800 font-semibold">⏳ 3. Gabung Grup WA</span>
                         )}
                       </div>
+                      {rawFb && (
+                        <div className="flex items-center gap-1.5">
+                          {facebookConfirmed && fbProofHandle.trim().length >= 2 ? (
+                            <span className="text-emerald-700 font-bold">✅ 4. Fanspage Facebook</span>
+                          ) : (
+                            <span className="text-amber-800 font-semibold">⏳ 4. Fanspage Facebook</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

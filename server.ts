@@ -501,6 +501,7 @@ let websiteConfig: any = {
   announcementType: 'info',
   maintenanceMode: false,
   registrationOpen: true,
+  requireEmailActivation: true,
   officialSocials: {
     instagram: '@adrian_andrew.id',
     youtube: 'https://youtube.com/@adrian_andrew.id',
@@ -681,9 +682,46 @@ function initDatabase() {
         }
       });
 
+      // Ensure every registered non-admin member has a member_joined notification for Admin view
+      teamMembers.forEach((m) => {
+        if (m.userType !== 'admin') {
+          const hasJoinNotif = notifications.some(
+            (n) => n.memberId === m.id || n.id.includes(m.id) || (n.message && n.message.includes(m.name))
+          );
+          if (!hasJoinNotif) {
+            notifications.unshift({
+              id: `notif-join-${m.id}`,
+              title: `👤 Member Baru Bergabung: ${m.name}`,
+              message: `${m.name} (${m.role || m.occupation || 'Member Baru'}) telah bergabung di Komunitas TBK. Klik untuk melihat resume member di Kalender Editorial!`,
+              type: 'member_joined',
+              read: false,
+              createdAt: m.joinedAt || new Date().toISOString(),
+              memberId: m.id,
+            });
+          }
+        }
+      });
+
       saveDatabase();
       console.log(`[Storage] Loaded ${teamMembers.length} members, ${tasks.length} tasks, and ${notifications.length} notifications.`);
     } else {
+      // First boot: ensure notifications exist for initial members
+      teamMembers.forEach((m) => {
+        if (m.userType !== 'admin') {
+          const hasJoinNotif = notifications.some((n) => n.memberId === m.id);
+          if (!hasJoinNotif) {
+            notifications.unshift({
+              id: `notif-join-${m.id}`,
+              title: `👤 Member Baru Bergabung: ${m.name}`,
+              message: `${m.name} (${m.role || m.occupation || 'Member Baru'}) telah bergabung di Komunitas TBK. Klik untuk melihat resume member di Kalender Editorial!`,
+              type: 'member_joined',
+              read: false,
+              createdAt: m.joinedAt || new Date().toISOString(),
+              memberId: m.id,
+            });
+          }
+        }
+      });
       saveDatabase();
     }
   } catch (err) {
@@ -1382,10 +1420,14 @@ async function startServer() {
   // GET & POST Official Admin Social Media & Mandatory Task
   app.get('/api/admin/official-socials', (req: Request, res: Response) => {
     const adminUser = teamMembers.find((m) => m.userType === 'admin') || teamMembers[0];
+    const socials = {
+      ...(adminUser?.socialAccounts || {}),
+      ...(websiteConfig.officialSocials || {}),
+    };
     const mandatoryTask = tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
     res.json({
       success: true,
-      socialAccounts: adminUser?.socialAccounts || {},
+      socialAccounts: socials,
       mandatoryTask: mandatoryTask || null,
       hasMandatoryTask: !!mandatoryTask,
     });
@@ -1403,6 +1445,13 @@ async function startServer() {
         };
       }
     });
+
+    // Also update central websiteConfig so any mobile device gets it instantly
+    websiteConfig.officialSocials = {
+      ...websiteConfig.officialSocials,
+      ...socialAccounts,
+    };
+    websiteConfig.lastUpdatedOnline = new Date().toISOString();
 
     let mandatoryTask = tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
 
@@ -1519,6 +1568,8 @@ async function startServer() {
 
     saveDatabase();
     broadcastEvent('team_updated', teamMembers);
+    broadcastEvent('official_socials_updated', socialAccounts);
+    broadcastEvent('website_config_updated', websiteConfig);
 
     res.json({
       success: true,
@@ -1542,6 +1593,19 @@ async function startServer() {
       lastUpdatedOnline: new Date().toISOString(),
       updatedBy: req.body?.updatedBy || 'Administrator Resmi TBK',
     };
+
+    if (updated?.officialSocials) {
+      teamMembers.forEach((m) => {
+        if (m.userType === 'admin') {
+          m.socialAccounts = {
+            ...m.socialAccounts,
+            ...updated.officialSocials,
+          };
+        }
+      });
+      broadcastEvent('official_socials_updated', updated.officialSocials);
+    }
+
     saveDatabase();
     broadcastEvent('website_config_updated', websiteConfig);
     res.json({ success: true, config: websiteConfig });

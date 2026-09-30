@@ -221,20 +221,29 @@ export const AdminDatabaseSyncView: React.FC<AdminDatabaseSyncViewProps> = ({
     }
   };
 
-  // 5. Full 2-Way Sync
+  // 5. Full 2-Way Sync (Parallel Batch Commit for Lightning Speed)
   const handleFullTwoWaySync = async () => {
     setIsProcessing(true);
-    setActionLabel('Melakukan Sinkronisasi Penuh 2-Arah...');
-    addLog('=== MEMULAI SINKRONISASI PENUH 2-ARAH CLOUD FIREBASE ===', 'info');
+    setActionLabel('Melakukan Sinkronisasi Penuh 2-Arah Kilat...');
+    addLog('=== MEMULAI SINKRONISASI PENUH 2-ARAH CLOUD FIREBASE (MODE KILAT) ===', 'info');
 
     try {
-      // Step A: Push Members
-      addLog('Langkah 1/4: Ekspor data Member lokal ke Cloud...', 'info');
-      await syncAllMembersToFirebase(teamMembers);
+      // Step A: Push Members & Tasks in parallel
+      addLog('Langkah 1/2: Mengunggah data Member & Tugas ke Cloud secara paralel...', 'info');
+      const [pushMembersRes, pushTasksRes] = await Promise.all([
+        syncAllMembersToFirebase(teamMembers),
+        syncAllTasksToFirebase(tasks),
+      ]);
+      addLog(pushMembersRes.message, pushMembersRes.success ? 'success' : 'warning');
+      addLog(pushTasksRes.message, pushTasksRes.success ? 'success' : 'warning');
 
-      // Step B: Pull Remote Members
-      addLog('Langkah 2/4: Tarik data Member dari Cloud...', 'info');
-      const remoteM = await fetchMembersFromFirebase();
+      // Step B: Pull Remote Members & Tasks in parallel
+      addLog('Langkah 2/2: Menarik data terbaru Member & Tugas dari Cloud Firestore...', 'info');
+      const [remoteM, remoteT] = await Promise.all([
+        fetchMembersFromFirebase(),
+        fetchTasksFromFirebase(),
+      ]);
+
       if (remoteM.success && remoteM.members.length > 0) {
         const mapM = new Map<string, TeamMember>();
         teamMembers.forEach((m) => mapM.set(m.id, m));
@@ -245,13 +254,6 @@ export const AdminDatabaseSyncView: React.FC<AdminDatabaseSyncViewProps> = ({
         onUpdateTeamMembers(Array.from(mapM.values()));
       }
 
-      // Step C: Push Tasks
-      addLog('Langkah 3/4: Ekspor Tugas kolaborasi lokal ke Cloud...', 'info');
-      await syncAllTasksToFirebase(tasks);
-
-      // Step D: Pull Tasks
-      addLog('Langkah 4/4: Tarik data Tugas dari Cloud...', 'info');
-      const remoteT = await fetchTasksFromFirebase();
       if (remoteT.success && remoteT.tasks.length > 0) {
         const mapT = new Map<string, Task>();
         tasks.forEach((t) => mapT.set(t.id, t));
@@ -259,8 +261,8 @@ export const AdminDatabaseSyncView: React.FC<AdminDatabaseSyncViewProps> = ({
         onUpdateTasks(Array.from(mapT.values()));
       }
 
-      addLog('✅ SINKRONISASI PENUH 2-ARAH BERHASIL DISELESAIKAN!', 'success');
-      confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
+      addLog('✅ SINKRONISASI PENUH 2-ARAH SELESAI DENGAN CEPAT & AMAN!', 'success');
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
     } catch (err: any) {
       addLog(`Sinkronisasi penuh mengalami kendala: ${err?.message || 'Error'}`, 'error');
     } finally {

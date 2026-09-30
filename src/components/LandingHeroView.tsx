@@ -273,7 +273,7 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
                 Di era digital yang penuh persaingan algoritma, mengembangkan akun media sosial sendirian sering kali terasa berat. <strong className="text-white font-bold">Teman bawa Kawan (TBK)</strong> hadir bukan sebagai penyedia jasa buzzer bayaran atau bot manipulasi, melainkan wadah komunitas gotong royong digital tempat sesama pegiat media sosial saling mendukung secara nyata.
               </p>
               <p>
-                Mulai dari YouTube, TikTok, Instagram, Threads, Facebook, Google Maps review UMKM, hingga Spotify podcast — setiap anggota saling menonton secara tuntas, saling berdiskusi lewat komentar positif yang membangun, dan saling merekomendasikan secara organik. Ketika satu kawan melangkah maju, kita semua bertumbuh bersama!
+                Mulai dari YouTube, TikTok, Instagram, Threads, Fanspage Facebook, hingga Spotify podcast — setiap anggota saling menonton secara tuntas, saling berdiskusi lewat komentar positif yang membangun, dan saling merekomendasikan secara organik. Ketika satu kawan melangkah maju, kita semua bertumbuh bersama!
               </p>
             </div>
 
@@ -333,7 +333,7 @@ export const LandingHeroView: React.FC<LandingHeroViewProps> = ({
                     Dukungan 11 Platform Media Sosial
                   </p>
                   <p className="text-[11px] text-emerald-200/70 truncate">
-                    Instagram, YouTube, TikTok, Google Maps, Facebook, Playstore &amp; lainnya.
+                    Instagram, YouTube, TikTok, Fanspage Facebook, Playstore &amp; lainnya.
                   </p>
                 </div>
                 <span className="text-xs font-bold text-amber-300 group-hover:translate-x-0.5 transition-transform">

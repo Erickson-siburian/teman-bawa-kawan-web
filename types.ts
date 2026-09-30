@@ -111,6 +111,7 @@ export interface SocialFollowProof {
   instagramHandleProof?: string;
   tiktokFollowed?: boolean;
   facebookFollowed?: boolean;
+  facebookHandleProof?: string;
   whatsappJoined?: boolean;
   allCompleted?: boolean;
   completedAt?: string;

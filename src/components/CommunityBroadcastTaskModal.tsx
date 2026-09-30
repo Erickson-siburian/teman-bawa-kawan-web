@@ -4,6 +4,7 @@ import {
   Sparkles,
   Youtube,
   Instagram,
+  Facebook,
   Video,
   MapPin,
   Share2,
@@ -102,21 +103,25 @@ export const CommunityBroadcastTaskModal: React.FC<CommunityBroadcastTaskModalPr
       tags: ['TikTokFYP', 'FollowTikTok', 'SalingSupport', 'SeluruhPeserta'],
     },
     {
-      id: 'google_review',
-      title: 'Ulas Google Maps / Play Store Bintang 5',
-      platform: 'all' as SocialPlatform,
-      category: 'ops' as TaskCategory,
-      icon: MapPin,
-      color: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
-      defaultTitle: `⭐ Ulasan Positif Bintang 5 Google Maps / Play Store`,
-      defaultDescription: `Bantu reputasi bisnis/usaha kawan TBK dengan memberikan ulasan rating bintang 5 dan ulasan organik yang bermutu di Google Maps atau Google Play Store.`,
-      defaultLink: creator.socialAccounts?.googleMap || creator.socialAccounts?.googlePlaystore || 'https://maps.google.com',
+      id: 'facebook_fanspage',
+      title: 'Follow Fanspage & Like Facebook',
+      platform: 'facebook' as SocialPlatform,
+      category: 'growth' as TaskCategory,
+      icon: Facebook,
+      color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
+      defaultTitle: `👍 Follow & Like Fanspage / Akun Facebook`,
+      defaultDescription: `Saling support akun & Fanspage Facebook kawan TBK! Follow / sukai Fanspage Facebook ${creator.socialAccounts?.facebook || creator.name}, berikan like & komentar positif pada postingan terbaru untuk meningkatkan interaksi dan jangkauan organik.`,
+      defaultLink: creator.socialAccounts?.facebook
+        ? creator.socialAccounts.facebook.startsWith('http')
+          ? creator.socialAccounts.facebook
+          : `https://facebook.com/${creator.socialAccounts.facebook.replace('@', '')}`
+        : 'https://facebook.com',
       subtasks: [
-        'Buka link lokasi bisnis Google Maps / Play Store',
-        'Beri rating Bintang 5',
-        'Tulis ulasan positif minimal 2 kalimat bermutu',
+        `Follow / Sukai Fanspage Facebook ${creator.socialAccounts?.facebook || creator.name}`,
+        'Like postingan / video reel terbaru di Fanspage',
+        'Tulis komentar positif yang relevan dan membangun',
       ],
-      tags: ['GoogleMaps', 'ReviewBintang5', 'SalingSupport', 'SeluruhPeserta'],
+      tags: ['FacebookFanspage', 'FollowFanspage', 'SalingSupport', 'SeluruhPeserta'],
     },
   ];
 
@@ -313,7 +318,7 @@ export const CommunityBroadcastTaskModal: React.FC<CommunityBroadcastTaskModalPr
           {/* Media / Video Link */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-              <span>Tautan Video / Akun Media Sosial (YouTube / IG / TikTok / Maps)</span>
+              <span>Tautan Video / Akun Media Sosial (YouTube / IG / TikTok / Fanspage Facebook)</span>
               {mediaLink && (
                 <a
                   href={mediaLink}

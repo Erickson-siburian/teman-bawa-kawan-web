@@ -65,20 +65,20 @@ export const socialPlatformsList: PlatformServiceItem[] = [
     description: 'Saling tonton tuntas & berdiskusi di kolom komentar untuk menaikkan rasio retensi algoritma YouTube.',
   },
   {
-    id: 'googlemap',
-    name: 'Google Map',
-    category: 'Ulasan Bisnis & Toko',
-    badge: 'Review Bintang 5',
-    note: 'Local guide Indonesia dengan ulasan asli',
-    colorClass: 'from-emerald-600 to-blue-600',
-    iconBg: 'bg-white text-emerald-600 border border-slate-200',
+    id: 'facebook_fanspage',
+    name: 'Facebook Fanspage',
+    category: 'Follow & Post Engagement',
+    badge: 'Fanspage & Group',
+    note: 'Followers aktif & interaksi organik nyata',
+    colorClass: 'from-blue-600 to-indigo-700',
+    iconBg: 'bg-[#1877F2]',
     svgIcon: (
-      <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+      <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
       </svg>
     ),
-    benefits: ['Review Bintang 5 Berfoto', 'Menaikkan Ranking Toko di Maps', 'Membangun Kepercayaan Calon Pembeli'],
-    description: 'Bantu UMKM dan toko online lokal mendapatkan ulasan reputasi terpercaya di Google Business Profile.',
+    benefits: ['Followers Fanspage Organik', 'Like & Komentar Postingan Terbaru', 'Trigger Jangkauan Viral Algoritma'],
+    description: 'Saling follow Fanspage Facebook, berikan like & komentar bermutu guna mendongkrak jangkauan konten kawan TBK.',
   },
   {
     id: 'facebook',

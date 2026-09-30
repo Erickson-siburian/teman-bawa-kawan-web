@@ -101,7 +101,7 @@ export const TentangKamiModal: React.FC<TentangKamiModalProps> = ({
                 <span>Dukungan 11 Platform Medsos</span>
               </div>
               <p className="text-xs text-emerald-800/90 leading-relaxed">
-                Mencakup YouTube, TikTok, Instagram, Google Maps, Facebook, Threads, Playstore, LinkedIn, Spotify, Detik.com, hingga X (Twitter).
+                Mencakup YouTube, TikTok, Instagram, Fanspage Facebook, Threads, Playstore, LinkedIn, Spotify, Detik.com, hingga X (Twitter).
               </p>
             </div>
           </div>
@@ -129,7 +129,7 @@ export const TentangKamiModal: React.FC<TentangKamiModalProps> = ({
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Ulasan Bintang 5 &amp; Reputasi UMKM:</strong> Saling membantu bisnis kawan lewat Google Maps review dan rating aplikasi di Google Play Store.
+                  <strong>Follow Fanspage &amp; Like Post Facebook:</strong> Saling membantu pertumbuhan fanspage bisnis/karya kawan lewat follow, like postingan, dan rating aplikasi di Google Play Store.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
