@@ -34,6 +34,7 @@ import {
   fetchWebsiteConfigFromFirebase,
   testFirebaseConnection,
 } from '../services/firebaseService';
+import { sanitizeOfficialSocials } from '../constants/socials';
 
 interface AdminFirebaseOnlineManagerModalProps {
   isOpen: boolean;
@@ -106,12 +107,12 @@ export const AdminFirebaseOnlineManagerModal: React.FC<
       setRegistrationOpen(config.registrationOpen ?? true);
       setRequireEmailActivation(config.requireEmailActivation ?? false);
 
-      const soc = config.officialSocials || {};
-      setYoutube(soc.youtube || 'https://youtube.com/@adrian_andrew.id');
-      setInstagram(soc.instagram || '@adrian_andrew.id');
-      setWhatsappGroup(soc.whatsappGroup || 'https://chat.whatsapp.com/TBKOfficialCommunity');
-      setTiktok(soc.tiktok || '@adrianandrew_tiktok');
-      setFacebook(soc.facebook || 'Adrian Andrew ID');
+      const soc = sanitizeOfficialSocials(config.officialSocials);
+      setYoutube(soc.youtube || '');
+      setInstagram(soc.instagram || '');
+      setWhatsappGroup(soc.whatsappGroup || '');
+      setTiktok(soc.tiktok || '');
+      setFacebook(soc.facebook || '');
 
       const fb = getStoredFirebaseConfig();
       setFbProjectId(fb.projectId || 'tbk-komunitas-online');
@@ -516,7 +517,7 @@ export const AdminFirebaseOnlineManagerModal: React.FC<
                   type="text"
                   value={youtube}
                   onChange={(e) => setYoutube(e.target.value)}
-                  placeholder="https://youtube.com/@adrian_andrew.id atau https://youtube.com/watch?v=..."
+                  placeholder="https://youtube.com/@adrian_and_andrew"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                 />
               </div>
@@ -531,7 +532,7 @@ export const AdminFirebaseOnlineManagerModal: React.FC<
                   type="text"
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
-                  placeholder="@adrian_andrew.id atau https://instagram.com/adrian_andrew.id"
+                  placeholder="@erickson.halomoans"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                 />
               </div>
@@ -546,7 +547,7 @@ export const AdminFirebaseOnlineManagerModal: React.FC<
                   type="text"
                   value={whatsappGroup}
                   onChange={(e) => setWhatsappGroup(e.target.value)}
-                  placeholder="https://chat.whatsapp.com/TBKOfficialCommunity"
+                  placeholder="https://chat.whatsapp.com/HGnKisfjO8fBpy8YdJ2pt3?s=cl&p=a&mlu=4&ilr=4"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                 />
               </div>
@@ -561,7 +562,7 @@ export const AdminFirebaseOnlineManagerModal: React.FC<
                   type="text"
                   value={tiktok}
                   onChange={(e) => setTiktok(e.target.value)}
-                  placeholder="@adrianandrew_tiktok"
+                  placeholder="@josjus_store"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                 />
               </div>
@@ -576,7 +577,7 @@ export const AdminFirebaseOnlineManagerModal: React.FC<
                   type="text"
                   value={facebook}
                   onChange={(e) => setFacebook(e.target.value)}
-                  placeholder="Adrian Andrew ID"
+                  placeholder="https://web.facebook.com/people/JosJus-Gaming/100063723931662/?locale=id_ID"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                 />
               </div>

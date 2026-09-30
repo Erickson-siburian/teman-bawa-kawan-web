@@ -13,9 +13,11 @@ export const initialTeamMembers: TeamMember[] = [
     phoneNumber: '081298765432',
     occupation: 'Pengelola Komunitas & Webmaster',
     socialAccounts: {
-      instagram: '@adrian_andrew.id',
-      youtube: 'https://youtube.com/@adrian_andrew.id',
-      whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+      youtube: 'https://youtube.com/@adrian_and_andrew',
+      instagram: '@erickson.halomoans',
+      tiktok: '@josjus_store',
+      facebook: 'https://web.facebook.com/people/JosJus-Gaming/100063723931662/?locale=id_ID',
+      whatsappGroup: 'https://chat.whatsapp.com/HGnKisfjO8fBpy8YdJ2pt3?s=cl&p=a&mlu=4&ilr=4',
     },
     creatorNiche: 'Multiplatform Sinergi',
     primaryPlatform: 'YouTube',
@@ -234,6 +236,66 @@ export const initialTeamMembers: TeamMember[] = [
 ];
 
 export const initialTasks: Task[] = [
+  {
+    id: 'task-mandatory-official',
+    title: '📌 [Wajib] Subscribe & Follow Media Sosial Official Admin TBK',
+    description:
+      'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.',
+    isEncrypted: false,
+    status: 'in_progress',
+    priority: 'urgent',
+    mediaLink: 'https://youtube.com/@adrian_and_andrew',
+    platform: 'youtube',
+    creatorId: 'user-admin',
+    creatorName: 'Admin',
+    assigneeId: 'user-admin',
+    assigneeName: 'Seluruh Member Komunitas TBK',
+    assigneeAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    dueDate: new Date(Date.now() + 86400000 * 7).toISOString(),
+    category: 'algorithm_growth',
+    tags: ['WajibAdmin', 'OfficialAdmin', 'SinergiTBK', 'MemberBaru'],
+    isOfficialMandatory: true,
+    assignedToAll: true,
+    subtasks: [
+      {
+        id: 'sub-yt-official',
+        title: 'Subscribe & Tonton YouTube Official Admin: https://youtube.com/@adrian_and_andrew',
+        completed: false,
+      },
+      {
+        id: 'sub-ig-official',
+        title: 'Follow Instagram Official Admin: @erickson.halomoans',
+        completed: false,
+      },
+      {
+        id: 'sub-tt-official',
+        title: 'Follow TikTok Official Admin: @josjus_store',
+        completed: false,
+      },
+      {
+        id: 'sub-fb-official',
+        title: 'Follow Fanspage Facebook Official Admin: https://web.facebook.com/people/JosJus-Gaming/100063723931662/?locale=id_ID',
+        completed: false,
+      },
+      {
+        id: 'sub-wa-official',
+        title: 'Gabung Grup WhatsApp Resmi Komunitas TBK: https://chat.whatsapp.com/HGnKisfjO8fBpy8YdJ2pt3?s=cl&p=a&mlu=4&ilr=4',
+        completed: false,
+      },
+    ],
+    comments: [
+      {
+        id: 'c-admin-official',
+        userId: 'user-admin',
+        userName: 'Admin',
+        userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        text: 'Selamat datang di Komunitas TBK! Silakan subscribe dan follow seluruh tautan resmi di atas untuk mengaktifkan akses kolaborasi.',
+        createdAt: new Date().toISOString(),
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
   {
     id: 'task-101',
     title: 'Kontrak Kerja Sama & Jadwal Kolaborasi Konten 2026',

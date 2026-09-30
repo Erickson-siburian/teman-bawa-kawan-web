@@ -11,6 +11,7 @@ import {
   Firestore,
 } from 'firebase/firestore';
 import { WebsiteOnlineConfig, FirebaseConnectionConfig, TeamMember, Task } from '../types';
+import { MASTER_OFFICIAL_SOCIALS, sanitizeOfficialSocials } from '../constants/socials';
 
 const STORAGE_KEY_FIREBASE_CONFIG = 'tbk_firebase_connection_config';
 const STORAGE_KEY_WEBSITE_CONFIG = 'tbk_website_online_config';
@@ -39,11 +40,11 @@ export const DEFAULT_WEBSITE_CONFIG: WebsiteOnlineConfig = {
   registrationOpen: true,
   requireEmailActivation: true, // Default to true as requested by user
   officialSocials: {
-    instagram: '@adrian_andrew.id',
-    youtube: 'https://youtube.com/@adrian_andrew.id',
-    tiktok: '@adrianandrew_tiktok',
-    facebook: 'Adrian Andrew ID',
-    whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+    youtube: 'https://youtube.com/@adrian_and_andrew',
+    instagram: '@erickson.halomoans',
+    tiktok: '@josjus_store',
+    facebook: 'https://web.facebook.com/people/JosJus-Gaming/100063723931662/?locale=id_ID',
+    whatsappGroup: 'https://chat.whatsapp.com/HGnKisfjO8fBpy8YdJ2pt3?s=cl&p=a&mlu=4&ilr=4',
   },
   lastUpdatedOnline: new Date().toISOString(),
   updatedBy: 'Administrator Resmi TBK',
@@ -83,17 +84,24 @@ export function getStoredWebsiteConfig(): WebsiteOnlineConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_WEBSITE_CONFIG);
     if (raw) {
-      return { ...DEFAULT_WEBSITE_CONFIG, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      const merged: WebsiteOnlineConfig = { ...DEFAULT_WEBSITE_CONFIG, ...parsed };
+      merged.officialSocials = sanitizeOfficialSocials(merged.officialSocials);
+      return merged;
     }
   } catch (e) {
     console.warn('Gagal membaca config website dari localStorage:', e);
   }
-  return DEFAULT_WEBSITE_CONFIG;
+  return { ...DEFAULT_WEBSITE_CONFIG, officialSocials: { ...MASTER_OFFICIAL_SOCIALS } };
 }
 
 export function saveStoredWebsiteConfig(config: WebsiteOnlineConfig): void {
   try {
-    localStorage.setItem(STORAGE_KEY_WEBSITE_CONFIG, JSON.stringify(config));
+    const sanitizedConfig: WebsiteOnlineConfig = {
+      ...config,
+      officialSocials: sanitizeOfficialSocials(config.officialSocials),
+    };
+    localStorage.setItem(STORAGE_KEY_WEBSITE_CONFIG, JSON.stringify(sanitizedConfig));
   } catch (e) {
     console.warn('Gagal menyimpan config website ke localStorage:', e);
   }

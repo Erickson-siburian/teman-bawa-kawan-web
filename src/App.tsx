@@ -35,6 +35,11 @@ import { syncManager } from './lib/syncManager';
 import { playTaskDoneChime, playLevelUpFanfare, playNotificationTone } from './lib/audio';
 import { initialTeamMembers, initialTasks, initialNotifications, initialReferrals } from './data/initialData';
 import { getStoredWebsiteConfig, saveStoredWebsiteConfig, subscribeToWebsiteConfigOnline } from './services/firebaseService';
+import {
+  MASTER_OFFICIAL_SOCIALS,
+  sanitizeOfficialSocials,
+  buildOfficialMandatorySubtasks,
+} from './constants/socials';
 import confetti from 'canvas-confetti';
 
 export default function App() {
@@ -68,15 +73,9 @@ export default function App() {
   const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null);
   const [isDeleteMemberModalOpen, setIsDeleteMemberModalOpen] = useState(false);
 
-  const [officialAdminSocials, setOfficialAdminSocials] = useState<MemberSocialAccounts>(
-    websiteConfig.officialSocials || {
-      instagram: '@adrian_andrew.id',
-      youtube: 'https://youtube.com/@adrian_andrew.id',
-      tiktok: '@adrianandrew_tiktok',
-      facebook: 'Adrian Andrew ID',
-      whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
-    }
-  );
+  const [officialAdminSocials, setOfficialAdminSocials] = useState<MemberSocialAccounts>(() => {
+    return sanitizeOfficialSocials(websiteConfig.officialSocials);
+  });
 
   // Default currentUser is a regular member (user-2: Siti Rahmawati, userType: 'user')
   const [currentUser, setCurrentUser] = useState<TeamMember>(initialTeamMembers[0]);
@@ -149,7 +148,19 @@ export default function App() {
     });
     const activeNotifs = baseNotifs;
 
-    setTasks(activeTasks);
+    const cleanSocials = sanitizeOfficialSocials(websiteConfig.officialSocials);
+    const sanitizedActiveTasks = activeTasks.map((t) => {
+      if (t.isOfficialMandatory || t.id === 'task-mandatory-official' || t.tags?.includes('WajibAdmin')) {
+        return {
+          ...t,
+          mediaLink: cleanSocials.youtube,
+          subtasks: buildOfficialMandatorySubtasks(cleanSocials),
+        };
+      }
+      return t;
+    });
+
+    setTasks(sanitizedActiveTasks);
     setTeamMembers(activeTeam);
     setNotifications(activeNotifs);
     setReferrals(initialReferrals);
@@ -158,7 +169,7 @@ export default function App() {
     if (matched) setCurrentUser(matched);
 
     // Save defaults to cache if not already set
-    if (!cachedTasks || cachedTasks.length === 0) syncManager.setCachedTasks(activeTasks);
+    if (!cachedTasks || cachedTasks.length === 0) syncManager.setCachedTasks(sanitizedActiveTasks);
     syncManager.setCachedTeam(activeTeam);
     if (!cachedNotifs || cachedNotifs.length === 0) syncManager.setCachedNotifs(activeNotifs);
 
@@ -174,9 +185,53 @@ export default function App() {
           fetch('/api/admin/website-config').then((r) => r.json()).catch(() => null),
         ]);
 
+        let latestSocials = cleanSocials;
+
+        if (configRes && configRes.success && configRes.config) {
+          const sanitizedCfg = {
+            ...configRes.config,
+            officialSocials: sanitizeOfficialSocials(configRes.config.officialSocials),
+          };
+          setWebsiteConfig(sanitizedCfg);
+          saveStoredWebsiteConfig(sanitizedCfg);
+          if (sanitizedCfg.officialSocials) {
+            latestSocials = sanitizedCfg.officialSocials;
+            setOfficialAdminSocials(sanitizedCfg.officialSocials);
+          }
+        }
+        if (officialRes && officialRes.success && officialRes.socialAccounts) {
+          const sanitizedOfficial = sanitizeOfficialSocials(officialRes.socialAccounts);
+          latestSocials = sanitizedOfficial;
+          setOfficialAdminSocials(sanitizedOfficial);
+        }
+
         if (tasksRes && tasksRes.success) {
-          setTasks(tasksRes.tasks);
-          syncManager.setCachedTasks(tasksRes.tasks);
+          const sanitizedServerTasks = tasksRes.tasks.map((t: Task) => {
+            if (t.isOfficialMandatory || t.id === 'task-mandatory-official' || t.tags?.includes('WajibAdmin')) {
+              return {
+                ...t,
+                mediaLink: latestSocials.youtube,
+                subtasks: buildOfficialMandatorySubtasks(latestSocials),
+              };
+            }
+            return t;
+          });
+          setTasks(sanitizedServerTasks);
+          syncManager.setCachedTasks(sanitizedServerTasks);
+        } else {
+          // If tasks fetch didn't return, ensure active tasks reflect latest socials
+          setTasks((prev) =>
+            prev.map((t) => {
+              if (t.isOfficialMandatory || t.id === 'task-mandatory-official' || t.tags?.includes('WajibAdmin')) {
+                return {
+                  ...t,
+                  mediaLink: latestSocials.youtube,
+                  subtasks: buildOfficialMandatorySubtasks(latestSocials),
+                };
+              }
+              return t;
+            })
+          );
         }
         if (teamRes && teamRes.success) {
           const normalizedServerTeam = teamRes.teamMembers.filter(
@@ -210,16 +265,6 @@ export default function App() {
         }
         if (refRes && refRes.success) {
           setReferrals(refRes.referrals);
-        }
-        if (configRes && configRes.success && configRes.config) {
-          setWebsiteConfig(configRes.config);
-          saveStoredWebsiteConfig(configRes.config);
-          if (configRes.config.officialSocials) {
-            setOfficialAdminSocials(configRes.config.officialSocials);
-          }
-        }
-        if (officialRes && officialRes.success && officialRes.socialAccounts) {
-          setOfficialAdminSocials(officialRes.socialAccounts);
         }
       } catch (err) {
         console.warn('Backend API tidak tersambung (mode static/offline Vercel), menggunakan penyimpanan lokal.', err);
@@ -282,19 +327,64 @@ export default function App() {
         }
         setOutboxCount(syncManager.getOutboxCount());
       } else if (type === 'official_socials_updated') {
-        setOfficialAdminSocials(data);
+        const clean = sanitizeOfficialSocials(data);
+        setOfficialAdminSocials(clean);
+        setWebsiteConfig((prev) => {
+          const updated = { ...prev, officialSocials: clean, lastUpdatedOnline: new Date().toISOString() };
+          saveStoredWebsiteConfig(updated);
+          return updated;
+        });
+        setTasks((prev) => {
+          const updated = prev.map((t) => {
+            if (t.isOfficialMandatory || t.id === 'task-mandatory-official' || t.tags?.includes('WajibAdmin')) {
+              return {
+                ...t,
+                mediaLink: clean.youtube,
+                subtasks: buildOfficialMandatorySubtasks(clean),
+              };
+            }
+            return t;
+          });
+          syncManager.setCachedTasks(updated);
+          return updated;
+        });
       } else if (type === 'website_config_updated') {
-        setWebsiteConfig(data);
-        saveStoredWebsiteConfig(data);
-        if (data.officialSocials) {
-          setOfficialAdminSocials(data.officialSocials);
-        }
+        const cleanSocials = sanitizeOfficialSocials(data.officialSocials);
+        const updatedConfig = { ...data, officialSocials: cleanSocials };
+        setWebsiteConfig(updatedConfig);
+        saveStoredWebsiteConfig(updatedConfig);
+        setOfficialAdminSocials(cleanSocials);
+        setTasks((prev) => {
+          const updated = prev.map((t) => {
+            if (t.isOfficialMandatory || t.id === 'task-mandatory-official' || t.tags?.includes('WajibAdmin')) {
+              return {
+                ...t,
+                mediaLink: cleanSocials.youtube,
+                subtasks: buildOfficialMandatorySubtasks(cleanSocials),
+              };
+            }
+            return t;
+          });
+          syncManager.setCachedTasks(updated);
+          return updated;
+        });
       }
     });
+
+    // Mobile & browser visibility listener: re-sync instantly when user unlocks or returns to app on HP
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible' && syncManager.isOnline()) {
+        loadInitialData();
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
 
     return () => {
       unsubStatus();
       unsubData();
+      window.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
     };
   }, [loadInitialData]);
 
@@ -671,11 +761,40 @@ export default function App() {
     socialAccounts: MemberSocialAccounts,
     createMandatoryTask: boolean
   ) => {
-    setOfficialAdminSocials(socialAccounts);
+    const cleanSocials = sanitizeOfficialSocials(socialAccounts);
+    setOfficialAdminSocials(cleanSocials);
+
+    // Update websiteConfig and persist to localStorage
+    setWebsiteConfig((prev) => {
+      const updated = {
+        ...prev,
+        officialSocials: cleanSocials,
+        lastUpdatedOnline: new Date().toISOString(),
+      };
+      saveStoredWebsiteConfig(updated);
+      return updated;
+    });
+
+    // Update mandatory task in state and cache immediately so Task Panel on any device shows updated URLs
+    setTasks((prev) => {
+      const updated = prev.map((t) => {
+        if (t.isOfficialMandatory || t.id === 'task-mandatory-official' || t.tags?.includes('WajibAdmin')) {
+          return {
+            ...t,
+            mediaLink: cleanSocials.youtube,
+            subtasks: buildOfficialMandatorySubtasks(cleanSocials),
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return t;
+      });
+      syncManager.setCachedTasks(updated);
+      return updated;
+    });
 
     const updatedUser: TeamMember = {
       ...currentUser,
-      socialAccounts,
+      socialAccounts: cleanSocials,
     };
     setCurrentUser(updatedUser);
     setTeamMembers((prev) => prev.map((m) => (m.id === currentUser.id ? updatedUser : m)));
@@ -690,7 +809,7 @@ export default function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            socialAccounts,
+            socialAccounts: cleanSocials,
             enableMandatoryTask: createMandatoryTask,
           }),
         });
@@ -702,8 +821,18 @@ export default function App() {
             fetch('/api/team').then((r) => r.json()).catch(() => null),
           ]);
           if (tasksRes && tasksRes.success) {
-            setTasks(tasksRes.tasks);
-            syncManager.setCachedTasks(tasksRes.tasks);
+            const sanitizedServerTasks = tasksRes.tasks.map((t: Task) => {
+              if (t.isOfficialMandatory || t.id === 'task-mandatory-official' || t.tags?.includes('WajibAdmin')) {
+                return {
+                  ...t,
+                  mediaLink: cleanSocials.youtube,
+                  subtasks: buildOfficialMandatorySubtasks(cleanSocials),
+                };
+              }
+              return t;
+            });
+            setTasks(sanitizedServerTasks);
+            syncManager.setCachedTasks(sanitizedServerTasks);
           }
           if (teamRes && teamRes.success) {
             setTeamMembers(teamRes.teamMembers);

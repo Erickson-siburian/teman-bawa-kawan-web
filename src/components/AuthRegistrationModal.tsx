@@ -35,6 +35,11 @@ import {
 } from '../lib/memberStorage';
 import { syncManager } from '../lib/syncManager';
 import { getStoredWebsiteConfig } from '../services/firebaseService';
+import {
+  MASTER_OFFICIAL_SOCIALS,
+  sanitizeOfficialSocials,
+  formatSocialUrl,
+} from '../constants/socials';
 
 interface AuthRegistrationModalProps {
   isOpen: boolean;
@@ -96,9 +101,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
 
   // Live dynamic official socials with fallback to stored config and server fetch
   const [liveSocials, setLiveSocials] = useState<MemberSocialAccounts>(() => {
-    return officialSocials && Object.keys(officialSocials).length > 0
-      ? officialSocials
-      : getStoredWebsiteConfig().officialSocials || {};
+    return sanitizeOfficialSocials(officialSocials);
   });
 
   // Login-specific state
@@ -128,20 +131,18 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       setErrorMessage('');
       setRegSuccess(false);
 
-      if (officialSocials && Object.keys(officialSocials).length > 0) {
-        setLiveSocials(officialSocials);
-      } else {
-        const stored = getStoredWebsiteConfig().officialSocials;
-        if (stored) setLiveSocials(stored);
-        fetch('/api/admin/official-socials')
-          .then((r) => r.json())
-          .then((data) => {
-            if (data && data.success && data.socialAccounts) {
-              setLiveSocials(data.socialAccounts);
-            }
-          })
-          .catch(() => {});
-      }
+      const base = sanitizeOfficialSocials(officialSocials);
+      setLiveSocials(base);
+
+      // Always fetch fresh official socials from server to ensure device-agnostic consistency
+      fetch('/api/admin/official-socials')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.success && data.socialAccounts) {
+            setLiveSocials(sanitizeOfficialSocials(data.socialAccounts));
+          }
+        })
+        .catch(() => {});
     }
   }, [isOpen, initialMode, officialSocials]);
 
@@ -187,21 +188,22 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
 
   const isWhatsappValid = hasOpenedWhatsapp && whatsappConfirmed;
 
-  // Construct official URLs using liveSocials
-  const rawYt = liveSocials?.youtube || '@adrian_andrew.id';
-  const ytUrl = rawYt.startsWith('http') ? rawYt : `https://youtube.com/@${rawYt.replace('@', '')}`;
+  // Construct official URLs using liveSocials guaranteed by sanitizeOfficialSocials
+  const cleanLive = sanitizeOfficialSocials(liveSocials);
+  const rawYt = cleanLive.youtube;
+  const ytUrl = formatSocialUrl('youtube', cleanLive.youtube);
 
-  const rawIg = liveSocials?.instagram || '@adrian_andrew.id';
-  const igUrl = rawIg.startsWith('http') ? rawIg : `https://instagram.com/${rawIg.replace('@', '')}`;
+  const rawIg = cleanLive.instagram;
+  const igUrl = formatSocialUrl('instagram', cleanLive.instagram);
 
-  const rawWa = liveSocials?.whatsappGroup || 'https://chat.whatsapp.com/TBKOfficialCommunity';
-  const waUrl = rawWa.startsWith('http') ? rawWa : `https://chat.whatsapp.com/${rawWa}`;
+  const rawWa = cleanLive.whatsappGroup;
+  const waUrl = formatSocialUrl('whatsappGroup', cleanLive.whatsappGroup);
 
-  const rawFb = liveSocials?.facebook || '';
-  const fbUrl = rawFb.startsWith('http') ? rawFb : rawFb ? `https://facebook.com/${rawFb.replace('@', '')}` : '';
+  const rawFb = cleanLive.facebook;
+  const fbUrl = formatSocialUrl('facebook', cleanLive.facebook);
 
-  const rawTt = liveSocials?.tiktok || '';
-  const ttUrl = rawTt.startsWith('http') ? rawTt : rawTt ? `https://tiktok.com/@${rawTt.replace('@', '')}` : '';
+  const rawTt = cleanLive.tiktok;
+  const ttUrl = formatSocialUrl('tiktok', cleanLive.tiktok);
 
   const isFacebookValid = !rawFb || (hasOpenedFacebook && facebookConfirmed && fbProofHandle.trim().length >= 2);
 
@@ -422,9 +424,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
         phoneNumber: '081298765432',
         occupation: 'Pengelola Komunitas & Webmaster',
         socialAccounts: {
-          instagram: '@adrian_andrew.id',
-          youtube: 'https://youtube.com/@adrian_andrew.id',
-          whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+          ...MASTER_OFFICIAL_SOCIALS,
         },
         creatorNiche: 'Multiplatform Sinergi',
         primaryPlatform: 'YouTube',
@@ -532,9 +532,7 @@ export const AuthRegistrationModal: React.FC<AuthRegistrationModalProps> = ({
       phoneNumber: '081298765432',
       occupation: 'Pengelola Komunitas & Webmaster',
       socialAccounts: {
-        instagram: '@adrian_andrew.id',
-        youtube: 'https://youtube.com/@adrian_andrew.id',
-        whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+        ...MASTER_OFFICIAL_SOCIALS,
       },
       creatorNiche: 'Multiplatform Sinergi',
       primaryPlatform: 'YouTube',

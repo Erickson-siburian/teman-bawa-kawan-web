@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, ShieldCheck, KeyRound, X, AlertCircle, Sparkles, Flame } from 'lucide-react';
 import { TeamMember } from '../types';
+import { MASTER_OFFICIAL_SOCIALS } from '../constants/socials';
 
 interface AdminAccessGateModalProps {
   isOpen: boolean;
@@ -49,9 +50,7 @@ export const AdminAccessGateModal: React.FC<AdminAccessGateModalProps> = ({
           phoneNumber: '081298765432',
           occupation: 'Pengelola Komunitas & Webmaster',
           socialAccounts: {
-            instagram: '@adrian_andrew.id',
-            youtube: 'https://youtube.com/@adrian_andrew.id',
-            whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+            ...MASTER_OFFICIAL_SOCIALS,
           },
           creatorNiche: 'Multiplatform Sinergi',
           primaryPlatform: 'YouTube',

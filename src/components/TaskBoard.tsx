@@ -114,7 +114,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
               Saling Support &amp; Berkembang Bersama, Raih Sukses Konten Medsos!
             </h2>
             <p className="text-xs sm:text-sm text-indigo-100 leading-relaxed">
-              Mari saling support, bergotong-royong, dan bertumbuh bersama sesama kreator! Setiap tugas kolaborasi (tonton bareng, like &amp; komentar bermutu, share, follow, review Google Map, hingga duet video) diselesaikan secara tulus untuk memperluas jangkauan dan mendongkrak performa akun semua kawan!
+              Mari saling support, bergotong-royong, dan bertumbuh bersama sesama kreator! Setiap tugas kolaborasi (tonton bareng, like &amp; komentar bermutu, share, follow akun, follow fanspage Facebook, hingga duet video) diselesaikan secara tulus untuk memperluas jangkauan dan mendongkrak performa akun semua kawan!
             </p>
           </div>
 

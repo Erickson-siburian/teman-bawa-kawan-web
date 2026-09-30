@@ -1342,9 +1342,9 @@ export const AdminProgressMonitor: React.FC<AdminProgressMonitorProps> = ({
                   <p className="font-black text-slate-900">Masukkan Link atau Username Akun Anda</p>
                   <p className="text-slate-600 mt-0.5 leading-relaxed">
                     Isi tautan resmi Anda:
-                    <br />• <strong>YouTube:</strong> Masukkan link video atau channel Anda (contoh: <code>https://youtube.com/@adrian_andrew.id</code> atau <code>@adrian_andrew.id</code>).
-                    <br />• <strong>Instagram:</strong> Masukkan handle akun Anda (contoh: <code>@adrian_andrew.id</code>).
-                    <br />• <strong>TikTok:</strong> Masukkan username TikTok resmi (contoh: <code>@adrianandrew_tiktok</code>).
+                    <br />• <strong>YouTube:</strong> Masukkan link video atau channel Anda (contoh: <code>https://youtube.com/@adrian_and_andrew</code>).
+                    <br />• <strong>Instagram:</strong> Masukkan handle akun Anda (contoh: <code>@erickson.halomoans</code>).
+                    <br />• <strong>TikTok:</strong> Masukkan username TikTok resmi (contoh: <code>@josjus_store</code>).
                   </p>
                 </div>
               </div>

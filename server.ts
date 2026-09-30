@@ -176,9 +176,11 @@ let teamMembers: TeamMember[] = [
     phoneNumber: '081298765432',
     occupation: 'Pengelola Komunitas & Webmaster',
     socialAccounts: {
-      instagram: '@adrian_andrew.id',
-      youtube: 'https://youtube.com/@adrian_andrew.id',
-      whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+      youtube: 'https://youtube.com/@adrian_and_andrew',
+      instagram: '@erickson.halomoans',
+      tiktok: '@josjus_store',
+      facebook: 'https://web.facebook.com/people/JosJus-Gaming/100063723931662/?locale=id_ID',
+      whatsappGroup: 'https://chat.whatsapp.com/HGnKisfjO8fBpy8YdJ2pt3?s=cl&p=a&mlu=4&ilr=4',
     },
     creatorNiche: 'Multiplatform Sinergi',
     primaryPlatform: 'YouTube',
@@ -503,11 +505,11 @@ let websiteConfig: any = {
   registrationOpen: true,
   requireEmailActivation: true,
   officialSocials: {
-    instagram: '@adrian_andrew.id',
-    youtube: 'https://youtube.com/@adrian_andrew.id',
-    tiktok: '@adrianandrew_tiktok',
-    facebook: 'Adrian Andrew ID',
-    whatsappGroup: 'https://chat.whatsapp.com/TBKOfficialCommunity',
+    youtube: 'https://youtube.com/@adrian_and_andrew',
+    instagram: '@erickson.halomoans',
+    tiktok: '@josjus_store',
+    facebook: 'https://web.facebook.com/people/JosJus-Gaming/100063723931662/?locale=id_ID',
+    whatsappGroup: 'https://chat.whatsapp.com/HGnKisfjO8fBpy8YdJ2pt3?s=cl&p=a&mlu=4&ilr=4',
   },
   lastUpdatedOnline: new Date().toISOString(),
   updatedBy: 'Administrator Resmi TBK',
@@ -541,6 +543,122 @@ function initDatabase() {
       }
       if (data.websiteConfig && typeof data.websiteConfig === 'object') {
         websiteConfig = { ...websiteConfig, ...data.websiteConfig };
+      }
+
+      // Permanent Master Official Social URLs for TBK Community
+      const masterOfficialSocials = {
+        youtube: 'https://youtube.com/@adrian_and_andrew',
+        instagram: '@erickson.halomoans',
+        tiktok: '@josjus_store',
+        facebook: 'https://web.facebook.com/people/JosJus-Gaming/100063723931662/?locale=id_ID',
+        whatsappGroup: 'https://chat.whatsapp.com/HGnKisfjO8fBpy8YdJ2pt3?s=cl&p=a&mlu=4&ilr=4',
+      };
+
+      websiteConfig.officialSocials = {
+        ...masterOfficialSocials,
+        ...(websiteConfig.officialSocials || {}),
+      };
+
+      // Prune legacy placeholders if present
+      if (!websiteConfig.officialSocials.youtube || websiteConfig.officialSocials.youtube.includes('adrian_andrew.id')) {
+        websiteConfig.officialSocials.youtube = masterOfficialSocials.youtube;
+      }
+      if (!websiteConfig.officialSocials.instagram || websiteConfig.officialSocials.instagram.includes('adrian_andrew.id')) {
+        websiteConfig.officialSocials.instagram = masterOfficialSocials.instagram;
+      }
+      if (!websiteConfig.officialSocials.tiktok || websiteConfig.officialSocials.tiktok.includes('adrianandrew_tiktok')) {
+        websiteConfig.officialSocials.tiktok = masterOfficialSocials.tiktok;
+      }
+      if (!websiteConfig.officialSocials.facebook || websiteConfig.officialSocials.facebook.includes('Adrian Andrew ID')) {
+        websiteConfig.officialSocials.facebook = masterOfficialSocials.facebook;
+      }
+      if (!websiteConfig.officialSocials.whatsappGroup || websiteConfig.officialSocials.whatsappGroup.includes('TBKOfficialCommunity')) {
+        websiteConfig.officialSocials.whatsappGroup = masterOfficialSocials.whatsappGroup;
+      }
+
+      // Update admin user social accounts
+      teamMembers.forEach((m) => {
+        if (m.userType === 'admin') {
+          m.socialAccounts = {
+            ...m.socialAccounts,
+            ...websiteConfig.officialSocials,
+          };
+        }
+      });
+
+      // Ensure the official mandatory orientation task exists in tasks and has the exact 5 URLs
+      const existingMandTaskIndex = tasks.findIndex(
+        (t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin') || t.id === 'task-mandatory-official'
+      );
+      const mandatoryTaskData: Task = {
+        id: 'task-mandatory-official',
+        title: '📌 [Wajib] Subscribe & Follow Media Sosial Official Admin TBK',
+        description:
+          'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.',
+        isEncrypted: false,
+        status: 'in_progress',
+        priority: 'urgent',
+        mediaLink: websiteConfig.officialSocials.youtube,
+        platform: 'youtube',
+        creatorId: 'user-admin',
+        creatorName: 'Admin',
+        assigneeId: 'user-admin',
+        assigneeName: 'Seluruh Member Komunitas TBK',
+        assigneeAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        dueDate: new Date(Date.now() + 86400000 * 7).toISOString(),
+        category: 'algorithm_growth',
+        tags: ['WajibAdmin', 'OfficialAdmin', 'SinergiTBK', 'MemberBaru'],
+        isOfficialMandatory: true,
+        assignedToAll: true,
+        subtasks: [
+          {
+            id: 'sub-yt-official',
+            title: `Subscribe & Tonton YouTube Official Admin: ${websiteConfig.officialSocials.youtube}`,
+            completed: false,
+          },
+          {
+            id: 'sub-ig-official',
+            title: `Follow Instagram Official Admin: ${websiteConfig.officialSocials.instagram}`,
+            completed: false,
+          },
+          {
+            id: 'sub-tt-official',
+            title: `Follow TikTok Official Admin: ${websiteConfig.officialSocials.tiktok}`,
+            completed: false,
+          },
+          {
+            id: 'sub-fb-official',
+            title: `Follow Fanspage Facebook Official Admin: ${websiteConfig.officialSocials.facebook}`,
+            completed: false,
+          },
+          {
+            id: 'sub-wa-official',
+            title: `Gabung Grup WhatsApp Resmi Komunitas TBK: ${websiteConfig.officialSocials.whatsappGroup}`,
+            completed: false,
+          },
+        ],
+        comments: [
+          {
+            id: 'c-admin-official',
+            userId: 'user-admin',
+            userName: 'Admin',
+            userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            text: 'Selamat datang di Komunitas TBK! Silakan subscribe dan follow seluruh tautan resmi di atas untuk mengaktifkan akses kolaborasi.',
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (existingMandTaskIndex !== -1) {
+        tasks[existingMandTaskIndex] = {
+          ...tasks[existingMandTaskIndex],
+          ...mandatoryTaskData,
+          id: tasks[existingMandTaskIndex].id,
+        };
+      } else {
+        tasks.unshift(mandatoryTaskData);
       }
 
       // Add user-5 (Rian Hidayat) if not present
@@ -1455,7 +1573,9 @@ async function startServer() {
 
     let mandatoryTask = tasks.find((t) => t.isOfficialMandatory || t.tags?.includes('WajibAdmin'));
 
-    if (enableMandatoryTask) {
+    const shouldEnableMandatory = enableMandatoryTask !== false;
+
+    if (shouldEnableMandatory) {
       const subtasks: Subtask[] = [];
       if (socialAccounts?.youtube) {
         subtasks.push({
@@ -1481,7 +1601,14 @@ async function startServer() {
       if (socialAccounts?.facebook) {
         subtasks.push({
           id: `sub-fb-${Date.now()}`,
-          title: `Follow Facebook / Media Lain Admin: ${socialAccounts.facebook}`,
+          title: `Follow Fanspage Facebook Official Admin: ${socialAccounts.facebook}`,
+          completed: false,
+        });
+      }
+      if (socialAccounts?.whatsappGroup) {
+        subtasks.push({
+          id: `sub-wa-${Date.now()}`,
+          title: `Gabung Grup WhatsApp Resmi Komunitas TBK: ${socialAccounts.whatsappGroup}`,
           completed: false,
         });
       }
@@ -1520,15 +1647,15 @@ async function startServer() {
             customInstructions ||
             'Sinergi saling support wajib bagi seluruh calon member baru: silakan tonton, subscribe YouTube Official Admin TBK dan follow akun media sosial resmi kami untuk mendapatkan akses penuh kolaborasi.',
           isEncrypted: false,
-          status: 'todo',
+          status: 'in_progress',
           priority: 'urgent',
-          creatorId: 'admin-official',
-          creatorName: 'Admin Official TBK',
-          assigneeId: 'all',
-          assigneeName: 'Semua Member Baru',
+          creatorId: 'user-admin',
+          creatorName: 'Admin',
+          assigneeId: 'user-admin',
+          assigneeName: 'Seluruh Member Komunitas TBK',
           dueDate: new Date(Date.now() + 86400000 * 7).toISOString(),
           category: 'algorithm_growth',
-          tags: ['WajibAdmin', 'OfficialAdmin', 'SinergiTBK'],
+          tags: ['WajibAdmin', 'OfficialAdmin', 'SinergiTBK', 'MemberBaru'],
           isOfficialMandatory: true,
           mediaLink: formattedMediaLink,
           platform: socialAccounts?.youtube ? 'youtube' : socialAccounts?.instagram ? 'instagram' : 'tiktok',

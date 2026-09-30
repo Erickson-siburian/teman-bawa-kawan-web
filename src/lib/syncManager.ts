@@ -1,4 +1,9 @@
 import { SyncQueueItem, Task, TeamMember, NotificationItem } from '../types';
+import {
+  MASTER_OFFICIAL_SOCIALS,
+  sanitizeOfficialSocials,
+  buildOfficialMandatorySubtasks,
+} from '../constants/socials';
 
 const STORAGE_KEY_TASKS = 'tbk_cached_tasks';
 const STORAGE_KEY_TEAM = 'tbk_cached_team';
@@ -211,7 +216,21 @@ export class SyncManager {
     if (typeof window === 'undefined') return null;
     try {
       const data = localStorage.getItem(STORAGE_KEY_TASKS);
-      return data ? JSON.parse(data) : null;
+      if (!data) return null;
+      const tasks: Task[] = JSON.parse(data);
+      if (Array.isArray(tasks)) {
+        return tasks.map((t) => {
+          if (t.isOfficialMandatory || t.id === 'task-mandatory-official' || t.tags?.includes('WajibAdmin')) {
+            return {
+              ...t,
+              mediaLink: MASTER_OFFICIAL_SOCIALS.youtube,
+              subtasks: buildOfficialMandatorySubtasks(),
+            };
+          }
+          return t;
+        });
+      }
+      return tasks;
     } catch {
       return null;
     }
@@ -230,7 +249,20 @@ export class SyncManager {
     if (typeof window === 'undefined') return null;
     try {
       const data = localStorage.getItem(STORAGE_KEY_TEAM);
-      return data ? JSON.parse(data) : null;
+      if (!data) return null;
+      const team: TeamMember[] = JSON.parse(data);
+      if (Array.isArray(team)) {
+        return team.map((m) => {
+          if (m.userType === 'admin') {
+            return {
+              ...m,
+              socialAccounts: sanitizeOfficialSocials(m.socialAccounts),
+            };
+          }
+          return m;
+        });
+      }
+      return team;
     } catch {
       return null;
     }

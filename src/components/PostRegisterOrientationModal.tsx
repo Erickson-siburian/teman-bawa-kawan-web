@@ -13,6 +13,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { MemberSocialAccounts, Task, TeamMember } from '../types';
+import { sanitizeOfficialSocials, formatSocialUrl } from '../constants/socials';
 
 interface PostRegisterOrientationModalProps {
   isOpen: boolean;
@@ -90,17 +91,18 @@ export const PostRegisterOrientationModal: React.FC<PostRegisterOrientationModal
   const isYoutubeRequirementMet = secondsWatched >= REQUIRED_WATCH_SECONDS || youtubeConfirmed;
 
   // Construct official URLs
-  const rawYt = officialSocials.youtube || '@adrian_andrew.official';
-  const ytUrl = rawYt.startsWith('http') ? rawYt : `https://youtube.com/@${rawYt.replace('@', '')}`;
+  const cleanSocials = sanitizeOfficialSocials(officialSocials);
+  const rawYt = cleanSocials.youtube;
+  const ytUrl = formatSocialUrl('youtube', cleanSocials.youtube);
 
-  const rawIg = officialSocials.instagram || '@adrian_andrew.id';
-  const igUrl = rawIg.startsWith('http') ? rawIg : `https://instagram.com/${rawIg.replace('@', '')}`;
+  const rawIg = cleanSocials.instagram;
+  const igUrl = formatSocialUrl('instagram', cleanSocials.instagram);
 
-  const rawWa = officialSocials.whatsappGroup || 'https://chat.whatsapp.com/TBKOfficialCommunity';
-  const waUrl = rawWa.startsWith('http') ? rawWa : `https://chat.whatsapp.com/${rawWa}`;
+  const rawWa = cleanSocials.whatsappGroup;
+  const waUrl = formatSocialUrl('whatsappGroup', cleanSocials.whatsappGroup);
 
-  const rawTt = officialSocials.tiktok || '';
-  const ttUrl = rawTt.startsWith('http') ? rawTt : rawTt ? `https://tiktok.com/@${rawTt.replace('@', '')}` : '';
+  const rawTt = cleanSocials.tiktok;
+  const ttUrl = formatSocialUrl('tiktok', cleanSocials.tiktok);
 
   // Gating requirement: must have watched YouTube (or verified) + Instagram follow + WhatsApp join
   const canSubmit = isYoutubeRequirementMet && instagramConfirmed && whatsappConfirmed;
